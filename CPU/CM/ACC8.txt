@@ -1,0 +1,861 @@
+2
+CR: 0.000000
+PR: -nan
+AAE: -nan
+ARE: -nan
+2
+CR: 0.000000
+PR: -nan
+AAE: -nan
+ARE: -nan
+2
+CR: 0.000000
+PR: -nan
+AAE: -nan
+ARE: -nan
+2
+CR: 0.000000
+PR: -nan
+AAE: -nan
+ARE: -nan
+2
+CR: 0.000000
+PR: -nan
+AAE: -nan
+ARE: -nan
+5
+CR: 0.000000
+PR: -nan
+AAE: -nan
+ARE: -nan
+5
+CR: 0.000000
+PR: -nan
+AAE: -nan
+ARE: -nan
+5
+CR: 0.000000
+PR: -nan
+AAE: -nan
+ARE: -nan
+5
+CR: 0.000000
+PR: -nan
+AAE: -nan
+ARE: -nan
+10
+CR: 0.000000
+PR: -nan
+AAE: -nan
+ARE: -nan
+10
+CR: 0.000000
+PR: -nan
+AAE: -nan
+ARE: -nan
+10
+CR: 0.000000
+PR: -nan
+AAE: -nan
+ARE: -nan
+10
+CR: 0.000000
+PR: -nan
+AAE: -nan
+ARE: -nan
+10
+CR: 0.000000
+PR: -nan
+AAE: -nan
+ARE: -nan
+10
+CR: 0.000000
+PR: -nan
+AAE: -nan
+ARE: -nan
+10
+CR: 0.000000
+PR: -nan
+AAE: -nan
+ARE: -nan
+10
+CR: 0.000000
+PR: -nan
+AAE: -nan
+ARE: -nan
+10
+CR: 0.000000
+PR: -nan
+AAE: -nan
+ARE: -nan
+10
+CR: 0.000000
+PR: -nan
+AAE: -nan
+ARE: -nan
+10
+CR: 0.000000
+PR: -nan
+AAE: -nan
+ARE: -nan
+10
+CR: 0.000000
+PR: -nan
+AAE: -nan
+ARE: -nan
+10
+CR: 0.000000
+PR: -nan
+AAE: -nan
+ARE: -nan
+13
+CR: 0.000000
+PR: -nan
+AAE: -nan
+ARE: -nan
+13
+CR: 0.000000
+PR: -nan
+AAE: -nan
+ARE: -nan
+14
+CR: 0.000000
+PR: -nan
+AAE: -nan
+ARE: -nan
+14
+CR: 0.000000
+PR: -nan
+AAE: -nan
+ARE: -nan
+14
+CR: 0.000000
+PR: -nan
+AAE: -nan
+ARE: -nan
+14
+CR: 0.000000
+PR: -nan
+AAE: -nan
+ARE: -nan
+14
+CR: 0.000000
+PR: -nan
+AAE: -nan
+ARE: -nan
+14
+CR: 0.000000
+PR: -nan
+AAE: -nan
+ARE: -nan
+21
+CR: 0.000000
+PR: -nan
+AAE: -nan
+ARE: -nan
+21
+CR: 0.000000
+PR: -nan
+AAE: -nan
+ARE: -nan
+21
+CR: 0.000000
+PR: -nan
+AAE: -nan
+ARE: -nan
+21
+CR: 0.000000
+PR: -nan
+AAE: -nan
+ARE: -nan
+21
+CR: 0.000000
+PR: -nan
+AAE: -nan
+ARE: -nan
+21
+CR: 0.000000
+PR: -nan
+AAE: -nan
+ARE: -nan
+21
+CR: 0.000000
+PR: -nan
+AAE: -nan
+ARE: -nan
+21
+CR: 0.000000
+PR: -nan
+AAE: -nan
+ARE: -nan
+21
+CR: 0.000000
+PR: -nan
+AAE: -nan
+ARE: -nan
+21
+CR: 0.000000
+PR: -nan
+AAE: -nan
+ARE: -nan
+21
+CR: 0.000000
+PR: -nan
+AAE: -nan
+ARE: -nan
+21
+CR: 0.000000
+PR: -nan
+AAE: -nan
+ARE: -nan
+21
+CR: 0.000000
+PR: -nan
+AAE: -nan
+ARE: -nan
+21
+CR: 0.000000
+PR: -nan
+AAE: -nan
+ARE: -nan
+21
+CR: 0.000000
+PR: -nan
+AAE: -nan
+ARE: -nan
+21
+CR: 0.000000
+PR: -nan
+AAE: -nan
+ARE: -nan
+21
+CR: 0.000000
+PR: -nan
+AAE: -nan
+ARE: -nan
+21
+CR: 0.000000
+PR: -nan
+AAE: -nan
+ARE: -nan
+21
+CR: 0.000000
+PR: -nan
+AAE: -nan
+ARE: -nan
+21
+CR: 0.000000
+PR: -nan
+AAE: -nan
+ARE: -nan
+21
+CR: 0.000000
+PR: -nan
+AAE: -nan
+ARE: -nan
+21
+CR: 0.000000
+PR: -nan
+AAE: -nan
+ARE: -nan
+21
+CR: 0.000000
+PR: -nan
+AAE: -nan
+ARE: -nan
+21
+CR: 0.000000
+PR: -nan
+AAE: -nan
+ARE: -nan
+21
+CR: 0.000000
+PR: -nan
+AAE: -nan
+ARE: -nan
+21
+CR: 0.000000
+PR: -nan
+AAE: -nan
+ARE: -nan
+21
+CR: 0.000000
+PR: -nan
+AAE: -nan
+ARE: -nan
+21
+CR: 0.000000
+PR: -nan
+AAE: -nan
+ARE: -nan
+21
+CR: 0.000000
+PR: -nan
+AAE: -nan
+ARE: -nan
+22
+CR: 0.000000
+PR: -nan
+AAE: -nan
+ARE: -nan
+22
+CR: 0.000000
+PR: -nan
+AAE: -nan
+ARE: -nan
+23
+CR: 0.000000
+PR: -nan
+AAE: -nan
+ARE: -nan
+25
+CR: 0.000000
+PR: -nan
+AAE: -nan
+ARE: -nan
+25
+CR: 0.000000
+PR: -nan
+AAE: -nan
+ARE: -nan
+25
+CR: 0.000000
+PR: -nan
+AAE: -nan
+ARE: -nan
+25
+CR: 0.000000
+PR: -nan
+AAE: -nan
+ARE: -nan
+25
+CR: 0.000000
+PR: -nan
+AAE: -nan
+ARE: -nan
+25
+CR: 0.000000
+PR: -nan
+AAE: -nan
+ARE: -nan
+25
+CR: 0.000000
+PR: -nan
+AAE: -nan
+ARE: -nan
+25
+CR: 0.000000
+PR: -nan
+AAE: -nan
+ARE: -nan
+25
+CR: 0.000000
+PR: -nan
+AAE: -nan
+ARE: -nan
+25
+CR: 0.000000
+PR: -nan
+AAE: -nan
+ARE: -nan
+25
+CR: 0.000000
+PR: -nan
+AAE: -nan
+ARE: -nan
+25
+CR: 0.000000
+PR: -nan
+AAE: -nan
+ARE: -nan
+25
+CR: 0.000000
+PR: -nan
+AAE: -nan
+ARE: -nan
+25
+CR: 0.000000
+PR: -nan
+AAE: -nan
+ARE: -nan
+25
+CR: 0.000000
+PR: -nan
+AAE: -nan
+ARE: -nan
+25
+CR: 0.000000
+PR: -nan
+AAE: -nan
+ARE: -nan
+25
+CR: 0.000000
+PR: -nan
+AAE: -nan
+ARE: -nan
+26
+CR: 0.000000
+PR: -nan
+AAE: -nan
+ARE: -nan
+26
+CR: 0.000000
+PR: -nan
+AAE: -nan
+ARE: -nan
+26
+CR: 0.000000
+PR: -nan
+AAE: -nan
+ARE: -nan
+47
+CR: 0.000000
+PR: -nan
+AAE: -nan
+ARE: -nan
+47
+CR: 0.000000
+PR: -nan
+AAE: -nan
+ARE: -nan
+47
+CR: 0.000000
+PR: -nan
+AAE: -nan
+ARE: -nan
+47
+CR: 0.000000
+PR: -nan
+AAE: -nan
+ARE: -nan
+47
+CR: 0.000000
+PR: -nan
+AAE: -nan
+ARE: -nan
+47
+CR: 0.000000
+PR: -nan
+AAE: -nan
+ARE: -nan
+47
+CR: 0.000000
+PR: -nan
+AAE: -nan
+ARE: -nan
+47
+CR: 0.000000
+PR: -nan
+AAE: -nan
+ARE: -nan
+47
+CR: 0.000000
+PR: -nan
+AAE: -nan
+ARE: -nan
+47
+CR: 0.000000
+PR: -nan
+AAE: -nan
+ARE: -nan
+47
+CR: 0.000000
+PR: -nan
+AAE: -nan
+ARE: -nan
+47
+CR: 0.000000
+PR: -nan
+AAE: -nan
+ARE: -nan
+47
+CR: 0.000000
+PR: -nan
+AAE: -nan
+ARE: -nan
+47
+CR: 0.000000
+PR: -nan
+AAE: -nan
+ARE: -nan
+47
+CR: 0.000000
+PR: -nan
+AAE: -nan
+ARE: -nan
+50
+CR: 0.000000
+PR: -nan
+AAE: -nan
+ARE: -nan
+50
+CR: 0.000000
+PR: -nan
+AAE: -nan
+ARE: -nan
+50
+CR: 0.000000
+PR: -nan
+AAE: -nan
+ARE: -nan
+50
+CR: 0.000000
+PR: -nan
+AAE: -nan
+ARE: -nan
+50
+CR: 0.000000
+PR: -nan
+AAE: -nan
+ARE: -nan
+50
+CR: 0.000000
+PR: -nan
+AAE: -nan
+ARE: -nan
+50
+CR: 0.000000
+PR: -nan
+AAE: -nan
+ARE: -nan
+50
+CR: 0.000000
+PR: -nan
+AAE: -nan
+ARE: -nan
+50
+CR: 0.000000
+PR: -nan
+AAE: -nan
+ARE: -nan
+50
+CR: 0.000000
+PR: -nan
+AAE: -nan
+ARE: -nan
+50
+CR: 0.000000
+PR: -nan
+AAE: -nan
+ARE: -nan
+50
+CR: 0.000000
+PR: -nan
+AAE: -nan
+ARE: -nan
+50
+CR: 0.000000
+PR: -nan
+AAE: -nan
+ARE: -nan
+50
+CR: 0.000000
+PR: -nan
+AAE: -nan
+ARE: -nan
+50
+CR: 0.000000
+PR: -nan
+AAE: -nan
+ARE: -nan
+50
+CR: 0.000000
+PR: -nan
+AAE: -nan
+ARE: -nan
+50
+CR: 0.000000
+PR: -nan
+AAE: -nan
+ARE: -nan
+50
+CR: 0.000000
+PR: -nan
+AAE: -nan
+ARE: -nan
+50
+CR: 0.000000
+PR: -nan
+AAE: -nan
+ARE: -nan
+50
+CR: 0.000000
+PR: -nan
+AAE: -nan
+ARE: -nan
+50
+CR: 0.000000
+PR: -nan
+AAE: -nan
+ARE: -nan
+50
+CR: 0.000000
+PR: -nan
+AAE: -nan
+ARE: -nan
+50
+CR: 0.000000
+PR: -nan
+AAE: -nan
+ARE: -nan
+50
+CR: 0.000000
+PR: -nan
+AAE: -nan
+ARE: -nan
+50
+CR: 0.000000
+PR: -nan
+AAE: -nan
+ARE: -nan
+50
+CR: 0.000000
+PR: -nan
+AAE: -nan
+ARE: -nan
+51
+CR: 0.000000
+PR: -nan
+AAE: -nan
+ARE: -nan
+54
+CR: 0.000000
+PR: -nan
+AAE: -nan
+ARE: -nan
+54
+CR: 0.000000
+PR: -nan
+AAE: -nan
+ARE: -nan
+54
+CR: 0.000000
+PR: -nan
+AAE: -nan
+ARE: -nan
+54
+CR: 0.000000
+PR: -nan
+AAE: -nan
+ARE: -nan
+54
+CR: 0.000000
+PR: -nan
+AAE: -nan
+ARE: -nan
+54
+CR: 0.000000
+PR: -nan
+AAE: -nan
+ARE: -nan
+54
+CR: 0.000000
+PR: -nan
+AAE: -nan
+ARE: -nan
+54
+CR: 0.000000
+PR: -nan
+AAE: -nan
+ARE: -nan
+54
+CR: 0.000000
+PR: -nan
+AAE: -nan
+ARE: -nan
+54
+CR: 0.000000
+PR: -nan
+AAE: -nan
+ARE: -nan
+54
+CR: 0.000000
+PR: -nan
+AAE: -nan
+ARE: -nan
+54
+CR: 0.000000
+PR: -nan
+AAE: -nan
+ARE: -nan
+54
+CR: 0.000000
+PR: -nan
+AAE: -nan
+ARE: -nan
+54
+CR: 0.000000
+PR: -nan
+AAE: -nan
+ARE: -nan
+54
+CR: 0.000000
+PR: -nan
+AAE: -nan
+ARE: -nan
+54
+CR: 0.000000
+PR: -nan
+AAE: -nan
+ARE: -nan
+54
+CR: 0.000000
+PR: -nan
+AAE: -nan
+ARE: -nan
+54
+CR: 0.000000
+PR: -nan
+AAE: -nan
+ARE: -nan
+54
+CR: 0.000000
+PR: -nan
+AAE: -nan
+ARE: -nan
+54
+CR: 0.000000
+PR: -nan
+AAE: -nan
+ARE: -nan
+54
+CR: 0.000000
+PR: -nan
+AAE: -nan
+ARE: -nan
+54
+CR: 0.000000
+PR: -nan
+AAE: -nan
+ARE: -nan
+54
+CR: 0.000000
+PR: -nan
+AAE: -nan
+ARE: -nan
+54
+CR: 0.000000
+PR: -nan
+AAE: -nan
+ARE: -nan
+54
+CR: 0.000000
+PR: -nan
+AAE: -nan
+ARE: -nan
+54
+CR: 0.000000
+PR: -nan
+AAE: -nan
+ARE: -nan
+54
+CR: 0.000000
+PR: -nan
+AAE: -nan
+ARE: -nan
+54
+CR: 0.000000
+PR: -nan
+AAE: -nan
+ARE: -nan
+54
+CR: 0.000000
+PR: -nan
+AAE: -nan
+ARE: -nan
+54
+CR: 0.000000
+PR: -nan
+AAE: -nan
+ARE: -nan
+54
+CR: 0.000000
+PR: -nan
+AAE: -nan
+ARE: -nan
+54
+CR: 0.000000
+PR: -nan
+AAE: -nan
+ARE: -nan
+66
+CR: 0.000000
+PR: -nan
+AAE: -nan
+ARE: -nan
+66
+CR: 0.000000
+PR: -nan
+AAE: -nan
+ARE: -nan
+66
+CR: 0.000000
+PR: -nan
+AAE: -nan
+ARE: -nan
+66
+CR: 0.000000
+PR: -nan
+AAE: -nan
+ARE: -nan
+66
+CR: 0.000000
+PR: -nan
+AAE: -nan
+ARE: -nan
+66
+CR: 0.000000
+PR: -nan
+AAE: -nan
+ARE: -nan
+66
+CR: 0.000000
+PR: -nan
+AAE: -nan
+ARE: -nan
+66
+CR: 0.000000
+PR: -nan
+AAE: -nan
+ARE: -nan
+66
+CR: 0.000000
+PR: -nan
+AAE: -nan
+ARE: -nan
+66
+CR: 0.000000
+PR: -nan
+AAE: -nan
+ARE: -nan
+66
+CR: 0.000000
+PR: -nan
+AAE: -nan
+ARE: -nan
+66
+CR: 0.000000
+PR: -nan
+AAE: -nan
+ARE: -nan
+66
+CR: 0.000000
+PR: -nan
+AAE: -nan
+ARE: -nan
+66
+CR: 0.000000
+PR: -nan
+AAE: -nan
+ARE: -nan
+67
+CR: 0.000000
+PR: -nan
+AAE: -nan
+ARE: -nan
+69
+CR: 0.000000
+PR: -nan
+AAE: -nan
+ARE: -nan
+73

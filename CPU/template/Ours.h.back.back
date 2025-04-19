@@ -1,0 +1,689 @@
+#ifndef OURS_H
+#define OURS_H
+#include <algorithm>
+#include <chrono>
+#define PROCESS_THRESHOLD 6750
+// #define MEASUREACC
+// #include "config.h"
+// #include "hash.h"
+#include "config.h"
+#include "sketch.h"
+#include <barrier>
+#include <cstdint>
+#include <iomanip>
+#include <iostream>
+#include <ratio>
+#include <functional>
+#include <vector>
+
+// #define QTIMESTAMP
+// #define MEASUREAGGTP
+// #define MEASUREHTT
+#define MEASURETIME
+// #define MEASUREEND2ENDTP
+// #define QLENGTHONLY
+// #define IDEALMEARGE
+// #define MEASUREQLEN
+#include "Abstract.h"
+#if defined(MEASUREAGGTP) || defined(MEASUREEND2ENDTP)
+std::barrier<> barrier(THREAD_NUM + 1);
+#endif
+/**
+ * Template for OctoSketch running in multiple cores
+ */
+template <typename Callable>
+void measure_time(Callable &&code_block, std::vector<double> &timings)
+{
+  auto start_time = std::chrono::high_resolution_clock::now();
+
+  // 执行代码块
+  std::forward<Callable>(code_block)();
+
+  auto end_time = std::chrono::high_resolution_clock::now();
+  std::chrono::duration<double, std::milli> duration = end_time - start_time;
+
+  // 将测量结果存入向量
+  timings.emplace_back(duration.count());
+}
+
+struct global_sketch_sub_section
+{
+  uint64_t counter[HASH_NUM * sub_sketch_length];
+  uint64_t padding[8 - ((HASH_NUM * sub_sketch_length) % 8)];
+};
+void time_process(std::vector<double> time_vector)
+{
+  double max_time = 0;
+  double min_time = 1e9;
+  double tot_time = 0;
+  for (auto time : time_vector)
+  {
+    max_time = std::max(max_time, time);
+    min_time = std::min(min_time, time);
+    tot_time += time;
+  }
+  std::cout << "max_time: " << max_time << " min_time: " << min_time << " avg_time: " << tot_time / time_vector.size() << " tot_time: " << tot_time << std::endl;
+}
+template <typename Key, typename Entry, uint32_t thread_num>
+class Ours : public Abstract
+{
+private:
+  struct alignas(64) Paddedbool
+  {
+    bool value;
+  };
+  struct alignas(64) Paddedint
+  {
+    uint64_t value;
+  };
+  double queue_makeblock_max_time[thread_num];
+  double queue_makeblock_min_time[thread_num];
+  double queue_makeblock_avg_time[thread_num];
+  double queue_makeblock_tot_time[thread_num];
+  std::vector<double> queue_time;
+  std::vector<HashMap> aggregator_rets;
+  std::vector<uint64_t> thd_packets[thread_num];
+  std::vector<uint32_t> queue_lengths;
+  std::vector<uint32_t> processed_packets_nums;
+  std::unordered_map<Key, uint64_t> thd_ground_truth[thread_num];
+  std::mutex cv_m;
+  std::atomic<bool> is_querying;
+  std::unordered_set<Key> keyset;
+  std::atomic<uint32_t> partition_num;
+  Paddedbool thd_pause_flag[thread_num];
+  double running_time[thread_num];
+  uint32_t dataset_size[thread_num];
+  std::atomic<uint64_t> heavy_hitter_merge_cnt;
+  std::atomic<uint64_t> other_merge_cnt;
+
+public:
+#ifdef IDEALMEARGE
+  uint64_t global_sketch[HASH_NUM * thread_num][LENGTH];
+#endif
+  // static weak_atomic<int32_t> PROMASK;
+  std::vector<double> process_time[thread_num];
+  std::vector<uint32_t> local_queue_lengths[thread_num];
+  std::unordered_set<uint64_t> local_heavy_hitter_set[thread_num];
+  std::unordered_set<uint64_t> local_heavy_hitter_pos_set[thread_num][HASH_NUM];
+  std::unordered_set<uint64_t> heavy_hitter_set;
+  std::vector<double> enqueue_time[thread_num];
+  typedef ReaderWriterQueue<Entry> myQueue;
+  struct Paddedint merge_cnt[thread_num];
+  struct Paddedint local_heavy_hitter_merge_cnt[thread_num];
+  struct Paddedint local_other_merge_cnt[thread_num];
+  struct alignas(64) PaddedUint32
+  {
+    uint32_t value;
+  };
+  PaddedUint32 thd_processed_packets_num[thread_num];
+  myQueue que[thread_num][thread_num - 1];
+
+  virtual Sketch<Key> *initialize_parent() = 0;
+  virtual Sketch<Key> *initialize_child() = 0;
+
+  virtual void merge(Sketch<Key> *sketch, Entry temp) = 0;
+  virtual void process_queue(myQueue q_group[][thread_num - 1], struct global_sketch_sub_section *sketch_sub_section, uint64_t thread_id) = 0;
+  // virtual void modify_threshold() = 0;
+  // virtual void insert_child(Sketch<Key> *sketch, myQueue &q,
+  //                           const Key &packet) = 0;
+  virtual void
+  insert_child(Sketch<Key> *sketch, myQueue q_group[][thread_num - 1],
+               const Key &packet, uint64_t thread_id,
+               struct global_sketch_sub_section *sketch_sub_section) = 0;
+  void update(void *start, uint64_t size, HashMap mp,
+              double *throughput = nullptr)
+  {
+    size = size;
+    std::thread parent;
+    parent = std::thread(&Ours::ParentThread, this, &parent, start, size, &mp,
+                         throughput);
+    parent.join();
+  }
+
+  void ShowHH(HashMap *mp, int32_t threshold)
+  {
+    std::ofstream outFile("/home/ln7/OctoSketch/CPU/heavyhitter/HH.txt");
+    if (!outFile)
+    {
+      std::cerr << "无法打开输出文件." << std::endl;
+      return;
+    }
+
+    for (auto it : *mp)
+    {
+      if (it.second > threshold)
+      {
+        outFile << it.first << std::endl;
+      }
+    }
+    outFile.close();
+  }
+
+  void GetHH(HashMap *mp, int32_t threshold)
+  {
+    for (auto it : *mp)
+    {
+      if (it.second > threshold)
+      {
+        heavy_hitter_set.insert(it.second);
+      }
+    }
+    std::cout << "num of hh: " << heavy_hitter_set.size() << std::endl;
+  }
+
+  /**
+   * The thread of the aggregator
+   */
+  void ParentThread(std::thread *thisThd, void *start, uint64_t size,
+                    HashMap *mp, double *throughput)
+  {
+#ifdef __linux__
+    if (!setaffinity(thisThd, thread_num))
+      return;
+#endif
+#ifdef MEASUREHTT
+    GetHH(mp, size / sizeof(Key) * ALPHA);
+#endif
+    // init_seeds(Random_Generate(), Random_Generate());
+
+    std::atomic<int32_t> finish(0);
+    std::thread thd[thread_num];
+    std::thread measure_thd;
+    partition_num.store(0);
+    is_querying.store(false);
+    // uint64_t global_sketch[HASH_NUM][LENGTH];
+    struct global_sketch_sub_section global_sketch[thread_num];
+    for (uint64_t i = 0; i < thread_num; i++)
+    {
+      for (uint64_t j = 0; j < HASH_NUM * LENGTH / thread_num; j++)
+        global_sketch[i].counter[j] = 0;
+    }
+    // std::cout << "local sketch size:" << (double)LENGTH * HASH_NUM / 1024
+    //           // << "KB" << std::endl;
+    // measure_thd = std::thread(&Ours::measurequeuelength, this, &measure_thd,
+    // &finish);
+    Sketch<Key> *sketch = initialize_parent();
+// Initkeyset((Key *)start, size / sizeof(Key), keyset);
+#ifdef MEASUREACC
+    std::thread query_thd =
+        std::thread(&Ours::QueryThread, this, &query_thd, sketch, &finish);
+#endif
+    for (uint32_t i = 0; i < thread_num; ++i)
+    {
+      merge_cnt[i].value = 0;
+      thd_pause_flag[i].value = false;
+      thd_processed_packets_num[i] = PaddedUint32{0};
+      thd[i] = std::thread(&Ours::ChildThread, this, &(thd[i]), i, start, size,
+                           &finish, global_sketch + i);
+    }
+    while (partition_num < thread_num)
+    {
+    }
+#ifndef IDEALMEARGE
+    auto start_time = std::chrono::high_resolution_clock::now();
+    // collect(sketch, finish);
+    auto end_time = std::chrono::high_resolution_clock::now();
+    std::chrono::duration<double, std::milli> duration = end_time - start_time;
+#endif
+    // std::cout << "running time: " << duration.count() << " ms" << std::endl;
+    for (uint32_t i = 0; i < thread_num; ++i)
+    {
+      thd[i].join();
+    }
+// measure_thd.join();
+#ifdef MEASUREACC
+    query_thd.join();
+    for (uint32_t i = 0; i < thread_num; i++)
+      std::cout << "thread id: " << i << " dataset size: " << dataset_size[i]
+                << std::endl;
+      // ProcessQuery((Key *)start, size / sizeof(Key));
+#endif
+#ifdef MEASURETIME
+    double avg_time = 0;
+    double max_time = 0;
+    double avg_numa1 = 0;
+    uint64_t tot_size = 0;
+    double avg_numa2 = 0;
+    for (uint32_t i = 0; i < thread_num; i++)
+    {
+      avg_time += running_time[i];
+      max_time = std::max(max_time, running_time[i]);
+      tot_size += dataset_size[i];
+      std::cout << "thread id: " << i << " dataset size: " << dataset_size[i]
+                << " running time: " << running_time[i]
+                << " merge count: " << merge_cnt[i].value
+                // << " expansion count: " << que[i].expansion_cnt
+                << "make block time, max:" << queue_makeblock_max_time[i]
+                << ",min: " << queue_makeblock_min_time[i]
+                << ",avg: " << queue_makeblock_avg_time[i]
+                << ",tot: " << queue_makeblock_tot_time[i] << std::endl;
+    }
+    // for (uint32_t i = 0; i < thread_num / 2; i++) {
+    //   avg_time += running_time[i];
+    //   max_time = std::max(max_time, running_time[i]);
+    // }
+    // for (uint64_t i = 0; i < thread_num; i++)
+    // {
+    //   std::cout << "thread: " << i << " ";
+    //   time_process(process_time[i]);
+    // }
+    for (uint64_t i = 0; i < thread_num; i++)
+    {
+      std::cout << "thread: " << i << " ";
+      time_process(enqueue_time[i]);
+    }
+    avg_time /= thread_num;
+    *throughput = tot_size / avg_time * 1000;
+    std::cout << "tot_process" << tot_size << std::endl;
+    std::cout << "avg: " << avg_time << std::endl;
+    std::cout << "throughput: " << std::fixed << std::setprecision(2)
+              << *throughput << std::endl;
+    for (uint64_t i = 0; i < thread_num; i++)
+    {
+      double max = 0;
+      double min = 1e9;
+      double tot = 0;
+      uint64_t expansion_cnt = 0;
+      for (uint64_t j = 0; j < thread_num; j++)
+      {
+        uint64_t id = 0;
+        if (i == j)
+          continue;
+        if (i < j)
+          id = i;
+        else
+          id = i - 1;
+        for (auto time : que[j][id].make_block_time)
+        {
+          max = std::max(time, max);
+          min = std::min(time, min);
+          tot += time;
+          expansion_cnt += que[j][id].expansion_cnt;
+        }
+      }
+
+      std::cout << " thread: " << i << " expansion count: " << expansion_cnt << " max: " << std::fixed << std::setprecision(10) << max << " min: " << std::fixed << std::setprecision(10) << min << " tot: " << std::fixed << std::setprecision(10) << tot << std::endl;
+    }
+#endif
+#ifdef MEASUREHTT
+    std::cout << "other merge cnt:" << other_merge_cnt << std::endl;
+    std::cout << "htt merge cnt:" << heavy_hitter_merge_cnt << std::endl;
+#endif
+#ifdef MEASUREQLEN
+    for (uint32_t i = 0; i < thread_num; i++)
+    {
+      for (auto it : local_queue_lengths[i])
+        std::cout << it << std::endl;
+    }
+#endif
+#ifdef QTIMESTAMP
+    ShowQueueProcessTime("/home/ln7/OctoSketch/CPU/queueprocesstime/time" +
+                         std::to_string(thread_num) + ".txt");
+#endif
+    // ShowHH(mp, size / sizeof(Key) * ALPHA);
+    delete sketch;
+  }
+
+  /**
+   * The thread of each worker
+   */
+  void ChildThread(std::thread *thisThd, uint32_t thread_id, void *start,
+                   uint64_t size, std::atomic<int32_t> *finish,
+                   struct global_sketch_sub_section *sketch_sub_section)
+  {
+#ifdef __linux__
+    // if (!setaffinity(thisThd, thread_id + 6))
+    //   return;
+    if (!setaffinity(thisThd, thread_id))
+      return;
+#endif
+    Sketch<Key> *sketch = initialize_child();
+
+    std::vector<Key> dataset;
+
+    Partition<Key, thread_num>((Key *)start, size / sizeof(Key), thread_id,
+                               dataset);
+    partition_num.fetch_add(1);
+#ifdef MEASUREHTT
+    cv_m.lock();
+    for (auto it : heavy_hitter_set)
+    {
+      local_heavy_hitter_set[thread_id].insert(it);
+    }
+    cv_m.unlock();
+    for (auto it : local_heavy_hitter_set[thread_id])
+    {
+      for (uint32_t i = 0; i < HASH_NUM; i++)
+      {
+        uint64_t pos = hash(it, i) % LENGTH;
+        local_heavy_hitter_pos_set[thread_id][i].insert(pos);
+      }
+    }
+    // for (uint32_t i = 0; i < HASH_NUM; i++) {
+    //   std::cout << "core " << thread_id << "row " << i << "HH pos num: "
+    //             << local_heavy_hitter_pos_set[thread_id][i].size() <<
+    //             std::endl;
+    // }
+    local_heavy_hitter_merge_cnt[thread_id].value = 0;
+    local_other_merge_cnt[thread_id].value = 0;
+#endif
+    while (partition_num < thread_num)
+    {
+    }
+#ifdef MEASURETIME
+    auto start_time = std::chrono::high_resolution_clock::now();
+#endif
+    sketch =
+        insert(dataset, sketch, que, thread_id, sketch_sub_section);
+
+#ifdef MEASURETIME
+    auto end_time = std::chrono::high_resolution_clock::now();
+    std::chrono::duration<double, std::milli> duration = end_time - start_time;
+    running_time[thread_id] = duration.count();
+#endif
+    dataset_size[thread_id] = dataset.size();
+    // std::cout<<"thread: "<<thread_id<< " running time: " << duration.count()
+    // << " ms" << std::endl;
+    (*finish)++;
+    while (*finish < thread_num) {
+      process_queue(que, sketch_sub_section, thread_id);
+    }
+#ifdef MEASUREACC
+    for (uint32_t i = 0; i < thd_processed_packets_num[thread_id].value; i++)
+      thd_ground_truth[thread_id][dataset[i]] += 1;
+#endif
+#ifdef MEASUREHTT
+    heavy_hitter_merge_cnt.fetch_add(
+        local_heavy_hitter_merge_cnt[thread_id].value);
+    other_merge_cnt.fetch_add(local_other_merge_cnt[thread_id].value);
+#endif
+    delete sketch;
+  }
+
+  Sketch<Key> *insert(const std::vector<Key> &dataset, Sketch<Key> *sketch,
+                      myQueue queue_group[][thread_num - 1], uint32_t thread_id,
+                      struct global_sketch_sub_section *sketch_sub_section)
+  {
+    uint32_t length = dataset.size();
+#ifdef MEASUREEND2ENDTP
+    barrier.arrive_and_wait();
+#endif
+    for (uint32_t i = 0; i < length; ++i)
+    {
+      // {
+      //     std::unique_lock<std::mutex> lock(cv_m);
+      //     cv.wait(lock, [this]
+      //             { return !is_querying.load(); }); // 等待恢复信号
+      // }
+#ifdef MEASUREACC
+      thd_processed_packets_num[thread_id].value += 1;
+      if (thd_pause_flag[thread_id].value)
+        return sketch;
+#endif
+// thd_processed_packets_num[thread_id].value += 1;
+#if defined(MEASUREHTT) || defined(MEASUREQLEN)
+      insert_child(sketch, q, dataset[i], thread_id);
+#else
+      insert_child(sketch, queue_group, dataset[i], thread_id,
+                   sketch_sub_section);
+#ifdef MEASUREAGGTP
+      if (i == 1000000)
+        barrier.arrive();
+#endif
+#endif
+      if (i % PROCESS_THRESHOLD == 0)
+        process_queue(queue_group, sketch_sub_section, thread_id);
+      //   measure_time([&]()
+      //                { process_queue(queue_group, sketch_sub_section, thread_id); }, process_time[thread_id]);
+    }
+
+    return sketch;
+  }
+  void measurequeuelength(std::thread *thisThd, std::atomic<int32_t> *finish)
+  {
+    while (*finish < thread_num)
+    {
+      uint32_t total = 0;
+      uint32_t processed_packet_num = 0;
+      for (uint32_t i = 0; i < thread_num; ++i)
+      {
+        processed_packet_num += thd_processed_packets_num[i].value;
+        total += que[i].size_approx();
+      }
+      queue_lengths.emplace_back(total);
+      processed_packets_nums.emplace_back(processed_packet_num);
+    }
+  }
+
+  void QueryThread(std::thread *thisThd, Sketch<Key> *sketch,
+                   std::atomic<int32_t> *finish)
+  {
+    uint64_t cnt = 0;
+    while (*finish < thread_num)
+    {
+      std::this_thread::sleep_for(std::chrono::nanoseconds(10000));
+      uint32_t total = 0;
+
+#ifdef QLENGTHONLY
+      for (uint32_t i = 0; i < thread_num; i++)
+      {
+        thd_packets[i].emplace_back(thd_processed_packets_num[i].value);
+        total += que[i].size_approx();
+      }
+      queue_lengths.emplace_back(total);
+#else
+      HashMap ret = sketch->query_all();
+      for (uint32_t i = 0; i < thread_num; i++)
+      {
+        thd_packets[i].emplace_back(thd_processed_packets_num[i].value);
+        // total += que[i].size_approx();
+      }
+      aggregator_rets.emplace_back(ret);
+      // queue_lengths.emplace_back(total);
+#endif
+    }
+  }
+  void ProcessQuery(Key *start, uint32_t size)
+  {
+    HashMap real;
+    for (auto it = keyset.begin(); it != keyset.end(); it++)
+      real[*it] = 0;
+    std::vector<Key> dataset[thread_num];
+    for (uint32_t i = 0; i < thread_num; i++)
+    {
+      Partition<Key, thread_num>(start, size, i, dataset[i]);
+    }
+
+#ifdef QLENGTHONLY
+    std::ofstream outputFile(
+        "/home/ln7/OctoSketch/eval/OctoSketchQLENSKIPHHLargeSet" +
+        std::to_string(thread_num) + std::to_string(PROMASK) + ".txt");
+    for (uint32_t i = 0; i < queue_lengths.size(); i++)
+    {
+      uint64_t tot = 0;
+      for (uint32_t j = 0; j < thread_num; j++)
+      {
+        tot += thd_packets[j][i];
+      }
+      if (tot == 0)
+        continue;
+      outputFile << tot << " " << queue_lengths[i] << std::endl;
+    }
+#else
+    std::ofstream outputFile("OctoSketchACCLargeSet" +
+                             std::to_string(thread_num) +
+                             std::to_string(PROMASK) + ".txt");
+    for (uint32_t i = 0; i < aggregator_rets.size(); i++)
+    {
+      uint64_t tot = 0;
+
+      for (uint32_t j = 0; j < thread_num; j++)
+      {
+        tot += thd_packets[j][i];
+        if (i == 0)
+          for (uint32_t k = 0; k < thd_packets[j][i]; k++)
+            real[dataset[j][k]] += 1;
+        else
+          for (uint32_t k = thd_packets[j][i - 1]; k < thd_packets[j][i]; k++)
+            real[dataset[j][k]] += 1;
+      }
+      // std::cout << "packets num: " << tot << std::endl;
+      if (tot == 0)
+        continue;
+      outputFile << tot << " " << queue_lengths[i] << std::endl;
+      HHCompare(aggregator_rets[i], real, tot * ALPHA, &outputFile);
+    }
+#endif
+    outputFile.close();
+  }
+
+  //   void Query(Sketch<Key> *sketch) {
+  //     std::cout << "start query" << std::endl;
+  //     // is_querying.store(true);
+  //     HashMap ret = sketch->query_all();
+  //     uint32_t processed_packets_num = 0;
+  //     double estHH = 0, HH = 0, both = 0;
+  //     double CR = 0, PR = 0, AAE = 0, ARE = 0;
+
+  //     for (uint32_t i = 0; i < thread_num; i++)
+  //       processed_packets_num += thd_processed_packets_num[i].value;
+  //     std::cout << processed_packets_num << std::endl;
+  //     uint32_t threshold = processed_packets_num * ALPHA;
+  //     std::cout << threshold << std::endl;
+  //     for (auto it = ret.begin(); it != ret.end(); ++it) {
+  //       if (it->second > threshold) {
+  //         estHH += 1;
+  //         uint32_t cnt = 0;
+  //         for (uint32_t i = 0; i < thread_num; i++)
+  //           cnt += thd_ground_truth[i][it->first];
+  //         if (cnt > threshold) {
+  //           both += 1;
+  //           AAE += abs((int)cnt - (int)it->second);
+  //           ARE += abs((int)cnt - (int)it->second) / (double)cnt;
+  //         }
+  //       }
+  //     }
+
+  //     for (auto it = keyset.begin(); it != keyset.end(); ++it) {
+  //       uint32_t cnt = 0;
+  //       for (uint32_t i = 0; i < thread_num; i++)
+  //         cnt += thd_ground_truth[i][*it];
+  //       if (cnt > threshold) {
+  //         HH += 1;
+  //       }
+  //     }
+  //     // is_querying.store(false);
+  //     // cv.notify_all();
+  //     std::cout << "CR: " << both / HH << std::endl
+  //               << "PR: " << both / estHH << std::endl
+  //               << "AAE: " << AAE / both << std::endl
+  //               << "ARE: " << ARE / both << std::endl
+  //               << std::endl;
+  //   }
+
+  void ShowQueueProcessTime(std::string path)
+  {
+    std::ofstream outFile(path);
+    for (auto it : queue_time)
+    {
+      outFile << it << std::endl;
+    }
+    outFile.close();
+  }
+
+  void collect(Sketch<Key> *sketch, std::atomic<int32_t> &finish)
+  {
+
+    Entry temp;
+    uint64_t idx = 0;
+    bool empty = true;
+    // uint64_t cnt = 100000000;
+    uint64_t cnt = 0;
+#if defined(MEASUREAGGTP) || defined(MEASUREEND2ENDTP)
+    barrier.arrive_and_wait();
+#endif
+#if defined(MEASUREAGGTP) || defined(MEASUREEND2ENDTP)
+    auto start_time = std::chrono::high_resolution_clock::now();
+#endif
+    // while (finish <= 0) {
+    while (finish < thread_num)
+    {
+      for (uint32_t i = 0; i < thread_num; ++i)
+      {
+#if defined(MEASUREAGGTP) || defined(MEASUREEND2ENDTP)
+        empty = true;
+#endif
+        while (que[i].try_dequeue(temp))
+        {
+#ifdef QTIMESTAMP
+          idx++;
+          if (idx % 10 == 0)
+          {
+            auto dequeue_time = std::chrono::high_resolution_clock::now();
+            std::chrono::duration<double, std::nano> duration =
+                dequeue_time - temp.time_stamp;
+            queue_time.emplace_back(duration.count());
+          }
+#endif
+          merge(sketch, temp);
+#if defined(MEASUREAGGTP) || defined(MEASUREEND2ENDTP)
+          cnt++;
+          empty = false;
+#endif
+        }
+      }
+    }
+#if defined(MEASUREAGGTP) || defined(MEASUREEND2ENDTP)
+    auto end_time = std::chrono::high_resolution_clock::now();
+    std::cout << finish << std::endl;
+    std::chrono::duration<double, std::milli> duration = end_time - start_time;
+    std::cout << "aggregator throughput:"
+              << (double)cnt / duration.count() * 1000 << std::endl;
+#endif
+    uint32_t total = 0;
+    uint64_t tot_expansion_cnt = 0;
+    uint64_t tot_queue_size = 0;
+    for (uint32_t i = 0; i < thread_num; ++i)
+    {
+      total += que[i].size_approx();
+      tot_expansion_cnt += que[i].expansion_cnt;
+      // tot_queue_size += que[i].queue_size;
+      // std::cout<<que[i].expansion_cnt<<std::endl;
+    }
+    std::cout << " Ours Delay: " << total << std::endl;
+    std::cout << "Total expansion count " << tot_expansion_cnt << std::endl;
+    std::cout << "average queue size: "
+              << ((double)(tot_expansion_cnt + thread_num) * 8366 /
+                  thread_num) /
+                     1024 / 1024
+              << " MB" << std::endl;
+    for (uint32_t i = 0; i < thread_num; i++)
+    {
+      double max_time = 0;
+      double tot_time = 0;
+      double min_time = 1e9;
+      for (auto time : que[i].make_block_time)
+      {
+        max_time = std::max(max_time, time);
+        min_time = std::min(min_time, time);
+        tot_time += time;
+      }
+      queue_makeblock_avg_time[i] = tot_time / que[i].make_block_time.size();
+      queue_makeblock_max_time[i] = max_time;
+      queue_makeblock_min_time[i] = min_time;
+      queue_makeblock_tot_time[i] = tot_time;
+    }
+
+    for (uint32_t i = 0; i < thread_num; ++i)
+    {
+      while (que[i].try_dequeue(temp))
+      {
+        merge(sketch, temp);
+      }
+    }
+  }
+};
+
+// template <typename Key, typename Entry, uint32_t thread_num>
+// weak_atomic<int32_t> Ours<Key, Entry, thread_num>::PROMASK = 0x7;
+#endif

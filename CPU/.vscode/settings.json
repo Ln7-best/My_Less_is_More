@@ -1,0 +1,28 @@
+{
+    "cmake.configureOnOpen": true,
+    // "clangd.path": "/home/ln7/.vscode-server/data/User/globalStorage/llvm-vs-code-extensions.vscode-clangd/install/18.1.3/clangd_18.1.3/bin/clangd",
+    "clangd.arguments": [
+        "--compile-commands-dir=${workspaceFolder}/CM",
+        "--background-index",
+        "--completion-style=detailed",
+        "--function-arg-placeholders",
+        "--pch-storage=disk",
+        "--header-insertion-decorators",
+        "--clang-tidy",
+        "--all-scopes-completion",
+        "--header-insertion=iwyu",
+        // "-std=c++20",
+        //  "--query-driver=/usr/bin/g++*"
+        // "-I/usr/include/c++/11/",
+    ],
+    "files.associations": {
+        "ratio": "cpp",
+        "system_error": "cpp",
+        "array": "cpp",
+        "functional": "cpp",
+        "tuple": "cpp",
+        "type_traits": "cpp",
+        "utility": "cpp",
+        "iomanip": "cpp"
+    },
+}
