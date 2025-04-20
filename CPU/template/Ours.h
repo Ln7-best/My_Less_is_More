@@ -130,7 +130,7 @@ private:
   // std::vector<Key> ds[thread_num];
 public:
   Paddedatomic process_counter[thread_num];
-  alignas(64) volatile char padding[64];
+  // alignas(64) volatile char padding[64];
   Paddedint full_cnt[thread_num];
   // alignas(64) volatile char padding1[64];
   global_buckets_sub_section<Key> global_buckets[thread_num];
@@ -300,7 +300,7 @@ public:
       max_time = std::max(max_time, running_time[i]);
       tot_size += dataset_size[i];
       std::cout << "thread id: " << i << " dataset size: " << dataset_size[i]
-                << " running time: " << running_time[i]
+                << " running time: " << running_time[i]<<std::endl;
     }
     // for (uint32_t i = 0; i < thread_num / 2; i++) {
     //   avg_time += running_time[i];
@@ -357,14 +357,14 @@ public:
                 << " tot: " << std::fixed << std::setprecision(10) << tot
                 << std::endl;
     }
-    uint64_t s =0;
-    for (uint64_t i = 0; i < thread_num; i++)
-    {
-      s+=full_cnt[i].value;
-      std::cout<<"thread:"<<i<<" "<<full_cnt[i].value<<std::endl;
-      // time_process<double>(process_cnt[i]);
-    }
-    std::cout<<s<<std::endl;
+    // uint64_t s =0;
+    // for (uint64_t i = 0; i < thread_num; i++)
+    // {
+    //   s+=full_cnt[i].value;
+    //   std::cout<<"thread:"<<i<<" "<<full_cnt[i].value<<std::endl;
+    //   // time_process<double>(process_cnt[i]);
+    // }
+    // std::cout<<s<<std::endl;
     // std::cout << "-----------------------" << std::endl;
     // for (uint64_t i = 0; i < thread_num; i++)
     //   time_process<uint64_t>(expansion_round[i]);

@@ -69,7 +69,7 @@ public:
         uint32_t minPos = 0;
         // uint64_t temp_val = 1;
         sketch[hashPos][pos[hashPos]] = 0;
-        uint64_t idx = hash(pos[hashPos], 101) % FILTER_BUCKET_LENGTH;
+        uint64_t idx = pos[hashPos] % FILTER_BUCKET_LENGTH;
         for (uint32_t j = 0; j < COUNTER_PER_BUCKET_FILTER; j++)
         {
           if (this->child_filters[thread_id].buckets[hashPos][idx].ID[j] ==
