@@ -3,8 +3,6 @@
 #include <cstddef>
 #include <cstdio>
 #include <vector>
-#define CM_ENTRY_LEN 2
-// #define WRITE_COMBINING
 // ©2013-2020 Cameron Desrochers.
 // Distributed under the simplified BSD license (see the license file that
 // should have come with this header).
@@ -630,52 +628,7 @@ public:
         fence(memory_order_release);
         tailBlock = tailBlockNext;
       } else {
-        return false;
-        // tailBlock is full and there's no free block ahead; create a new block
-        auto newBlockSize = largestBlockSize >= MAX_BLOCK_SIZE
-                                ? largestBlockSize
-                                : largestBlockSize * 2;
-        auto start_time = std::chrono::high_resolution_clock::now();
-        auto newBlock = make_block(newBlockSize);
-        auto end_time = std::chrono::high_resolution_clock::now();
-        std::chrono::duration<double, std::milli> duration =
-            end_time - start_time;
-        make_block_time.emplace_back(duration.count());
-        if (newBlock == nullptr) {
-          // Could not allocate a block!
-          return false;
-        }
-        expansion_cnt++;
-        largestBlockSize = newBlockSize;
-
-#if MOODYCAMEL_HAS_EMPLACE
-        new (newBlock->data) T(std::forward<Args>(args)...);
-#else
-#ifdef WRITE_COMBINING
-        long long *dst_start = (long long *)newBlock->data;
-        long long *src_start = (long long *)(&element);
-        for (size_t i = 0; i < CM_ENTRY_LEN; i++) {
-          _mm_stream_si64(dst_start + i, *(src_start + i));
-        }
-#else
-        new (newBlock->data) T(std::forward<U>(element));
-#endif
-#endif
-        assert(newBlock->front == 0);
-        newBlock->tail = newBlock->localTail = 1;
-
-        newBlock->next = tailBlock_->next.load();
-        tailBlock_->next = newBlock;
-
-        // Might be possible for the dequeue thread to see the new
-        // tailBlock->next *without* seeing the new tailBlock value, but this is
-        // OK since it can't advance to the next block until tailBlock is set
-        // anyway (because the only case where it could try to read the next is
-        // if it's already at the tailBlock, and it won't advance past tailBlock
-        // in any circumstance).
-
-        fence(memory_order_release);
-        tailBlock = newBlock;
+        // Block is full
         return false;
       }
     }
