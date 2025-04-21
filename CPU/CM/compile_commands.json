@@ -1,0 +1,7 @@
+[
+{
+  "directory": "/home/ln7/Octosketch/CPU/CM",
+  "command": "/usr/bin/c++ -I/usr/include/c++/11 -I/usr/include/x86_64-linux-gnu/c++/11 -L /usr/lib/gcc/x86_64-linux-gnu/11 -I/home/ln7/Octosketch/CPU/CM/. -I/home/ln7/Octosketch/CPU/CM/.. -I/home/ln7/Octosketch/CPU/CM/../../common -I/home/ln7/Octosketch/CPU/CM/../../queue -I/home/ln7/Octosketch/CPU/CM/../../sketch -O3 -faligned-new -pthread -mavx2 -lnuma -O3 -DNDEBUG -std=gnu++20 -o CMakeFiles/CM.dir/main.cpp.o -c /home/ln7/Octosketch/CPU/CM/main.cpp",
+  "file": "/home/ln7/Octosketch/CPU/CM/main.cpp"
+}
+]
