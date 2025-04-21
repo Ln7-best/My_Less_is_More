@@ -9,6 +9,16 @@
 
 #define MAX(a, b) (a > b ? a : b)
 #define MIN(a, b) (a < b ? a : b)
+struct alignas(64) Paddedatomicint64
+{
+  std::atomic<uint64_t> value;
+  char padding[64 - sizeof(std::atomic<uint64_t>)];
+};
+struct alignas(64) Paddedatomicint32
+{
+  std::atomic<uint32_t> value;
+  char padding[64 - sizeof(std::atomic<uint32_t>)];
+};
 struct alignas(64) Paddedatomic
 {
     std::atomic<uint64_t> value;

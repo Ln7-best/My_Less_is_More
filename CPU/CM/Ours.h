@@ -14,10 +14,11 @@
 #include <fstream>
 #include <ratio>
 #include <vector>
+#include <unordered_set>
 
 #define MEASURETIME
 // #include "Abstract.h"
-const uint64_t PROCESSGAP = 100000;
+const uint64_t PROCESSGAP = 50000;
 const uint64_t COUTERGAP = PROCESSGAP / 100;
 
 struct alignas(64) global_sketch_sub_section
@@ -56,6 +57,57 @@ struct alignas(64) child_buckets_sub_section
   Stash_Bucket<Key> buckets[HASH_NUM][FILTER_BUCKET_LENGTH];
   char padding[64 - sizeof(buckets) % 64];
 };
+
+template <typename T>
+struct alignas(64) cache_array{
+  T array[ARRAY_SIZE]; 
+  char padding0[64-((sizeof(array))%64)];
+};
+
+template <typename T>
+struct  alignas(64) double_cache_array
+{
+  cache_array<T> double_outcome_cache[2];  
+};
+
+template <typename T>
+struct alignas(64) query_outcome
+{
+  double_cache_array<T> outcome_cache;
+  uint64_t process_snapshot[NUM_OUTCOME];
+  char padding0[64-((sizeof(process_snapshot)+sizeof(outcome_cache))%64)];
+  T *outcome[NUM_OUTCOME];
+  char padding[64 - (sizeof(outcome)) % 64];
+
+  query_outcome()
+  {
+    for (int i = 0; i < NUM_OUTCOME; i++)
+    {
+
+      outcome[i] = static_cast<T *>(
+          std::aligned_alloc(64, sizeof(T) * ARRAY_SIZE));
+      if (!outcome[i])
+      {
+        std::cerr << "Memory allocation failed for outcome[" << i << "]\n";
+        std::exit(EXIT_FAILURE);
+      }
+      volatile char *touch = reinterpret_cast<volatile char *>(outcome[i]);
+      for (size_t j = 0; j < sizeof(T) * ARRAY_SIZE; j += 4096)
+      {
+        touch[j] = 0; 
+      }
+    }
+  }
+
+  ~query_outcome()
+  {
+    for (int i = 0; i < NUM_OUTCOME; i++)
+    {
+      std::free(outcome[i]); 
+    }
+  }
+};
+
 template <typename Key, uint32_t thread_num>
 class Ours
 {
@@ -71,6 +123,15 @@ public:
   }
 
 private:
+  Paddedint finish_cnt;
+  Paddedint issue_cnt;
+  Paddedatomicint64 query_finish;
+  Paddedatomicint64 real_value_for_query[thread_num];
+  Paddedint thread_snapshot_round[thread_num];
+  Paddedatomicint32 query_flag[thread_num];
+  typedef std::pair<Key, uint64_t> KV_Pair;
+  query_outcome<KV_Pair> threads_outcome[thread_num];
+  typedef ReaderWriterQueue<CM_Entry<Key>> myQueue;
   struct global_sketch_sub_section global_sketch[thread_num];
   double running_time[thread_num];
   uint32_t dataset_size[thread_num];
@@ -79,7 +140,6 @@ private:
   Paddedint operation_cnt[thread_num];
   global_buckets_sub_section<Key> global_buckets[thread_num];
   child_buckets_sub_section<Key> child_filters[thread_num];
-  typedef ReaderWriterQueue<CM_Entry<Key>> myQueue;
   struct Paddedint global_cnt[thread_num];
   struct Paddedint round[thread_num];
   myQueue que[thread_num][thread_num];
@@ -89,8 +149,6 @@ private:
   {
     double estHH = 0, HH = 0, both = 0;
     double CR = 0, PR = 0, AAE = 0, ARE = 0;
-    std::cout << "real size" << real.size() << std::endl;
-    std::cout << "test size" << test.size() << std::endl;
     uint64_t cnt = 0;
     for (auto it = test.begin(); it != test.end(); ++it)
     {
@@ -115,11 +173,6 @@ private:
       if (it->second > threshold)
       {
         HH += 1;
-        if (test.find(it->first) != test.end())
-        {
-          std::cout << (int64_t)threshold - (int64_t)test[it->first] << std::endl;
-          test_hit++;
-        }
       }
     }
     if (!outputFile)
@@ -164,6 +217,81 @@ private:
     }
     return ret;
   }
+
+
+  void issue_query()
+  {
+   bool finish_flag[thread_num];
+   finish_cnt.value = 0;
+   for (uint64_t i = 0; i < thread_num; i++)
+   {
+     finish_flag[i] = false;
+   }
+   query_finish.value.store(0);
+   uint64_t hit_cnt = 0;
+   uint64_t round = issue_cnt.value;
+   for(uint64_t i =0 ;i<thread_num;i++)
+   {
+     threads_outcome[i].process_snapshot[round] = real_value_for_query[i].value.load();
+   }
+   while (finish_cnt.value < thread_num)
+   {
+     for(uint64_t i =0 ;i<thread_num;i++)
+     {
+       if(finish_flag[i])
+         continue;
+       uint32_t expected[2]={0x00000000,0x01000000};
+       uint32_t swap[2] = {0x00010000,0x01000100};
+       bool flag0 = query_flag[i].value.compare_exchange_strong(expected[0],swap[0]);
+       bool flag1 = query_flag[i].value.compare_exchange_strong(expected[1],swap[1]);
+       uint64_t idx = 0;
+       if(flag0)
+       {          
+         idx = 1;
+       }
+       else if(flag1)
+       {
+         idx = 0;
+       }  
+       else 
+       {
+         continue;
+       }
+       for(uint64_t j=0;j< BUCKET_LENGTH*COUNTER_PER_BUCKET;j++)
+         threads_outcome[i].outcome[round][j] = this->threads_outcome[i].outcome_cache.double_outcome_cache[idx].array[j];
+       this->query_flag[i].value.fetch_and(0x11000000);
+       finish_flag[i] = true;
+       finish_cnt.value++;
+       if(finish_cnt.value >= thread_num)
+         break;
+     }
+   }
+  }
+
+  void Query(std::atomic<int32_t> &finish)
+  {
+    uint64_t cnt = 0;
+    issue_cnt.value = 0;
+    uint64_t sum =0;
+    while (finish < thread_num)
+    {
+      issue_cnt.value++;
+      std::this_thread::sleep_for(std::chrono::microseconds(1));
+      issue_query();
+    }
+    for(uint64_t i =0;i<thread_num;i++)
+    {
+      for(uint64_t j =0;j<ARRAY_SIZE;j++)
+      {
+        sum+=threads_outcome[i].outcome[0][j].first;
+        sum+=threads_outcome[i].outcome[0][j].second;
+      }
+      sum+= threads_outcome[i].process_snapshot[0];
+    }
+    std::cout<<sum<<std::endl;
+    std::cout << "issue count:" << issue_cnt.value << std::endl;
+  }
+
 
   void ParentThread(std::thread *thisThd, void *start, uint64_t size,
                     HashMap *mp, double *throughput)
@@ -213,6 +341,9 @@ private:
 
     for (uint32_t i = 0; i < thread_num; ++i)
     {
+      real_value_for_query[i].value.store(0);
+      thread_snapshot_round[i].value = 0;
+      query_flag[i].value.store(0);
       operation_cnt[i].value = 0;
       global_cnt[i].value = 0;
       round[i].value = 0;
@@ -222,13 +353,10 @@ private:
     while (partition_num < thread_num)
     {
     }
+    Query(finish);
     for (uint32_t i = 0; i < thread_num; ++i)
     {
       thd[i].join();
-    }
-    // collect(heap, finish);
-    while (finish.load(std::memory_order_seq_cst) < thread_num)
-    {
     }
     double avg_time = 0;
     double max_time = 0;
@@ -252,8 +380,82 @@ private:
     std::cout << "avg throughput: " << avg_throughput << std::endl;
     std::cout << "throughput: "
               << *throughput << std::endl;
-    HashMap ret = query_all();
-    HHCompare(ret, (*mp), size / sizeof(Key) * ALPHA);
+    ProcessQuery(start, size);
+    // HashMap ret = query_all();
+    // HHCompare(ret, (*mp), size / sizeof(Key) * ALPHA);
+  }
+  void ProcessQuery(void *start, uint64_t size)
+  {
+    HashMap real;
+    std::unordered_set<uint64_t> key_set;
+    // for (auto it = keyset.begin(); it != keyset.end(); it++)
+    //   real[*it] = 0;
+    std::vector<Key> dataset[thread_num];
+    for (uint32_t i = 0; i < thread_num; i++)
+    {
+      Partition((Key *)start, size / sizeof(Key), i, dataset[i]);
+    }
+    std::ofstream outputFile0("test" +
+                             std::to_string(thread_num) +
+                             std::to_string(PROMASK) + ".txt");
+    for (uint64_t i = 0; i < issue_cnt.value - 1; i++)
+    {
+      uint64_t tot = 0;
+      for (uint64_t j = 0; j < thread_num; j++)
+      {
+        tot += threads_outcome[j].process_snapshot[i];
+        if (i == 0)
+        {
+          for (uint64_t k = 0; k < threads_outcome[j].process_snapshot[i];
+               k++)
+          {
+            if (key_set.find(dataset[j][k]) != key_set.end())
+            {
+              real[dataset[j][k]] += 1;
+            }
+            else
+            {
+              key_set.insert(dataset[j][k]);
+              real[dataset[j][k]] = 1;
+            }
+          }
+        }
+        else
+        {
+          for (uint64_t k = threads_outcome[j].process_snapshot[i - 1];
+               k < threads_outcome[j].process_snapshot[i]; k++)
+            if (key_set.find(dataset[j][k]) != key_set.end())
+            {
+              real[dataset[j][k]] += 1;
+            }
+            else
+            {
+              key_set.insert(dataset[j][k]);
+              real[dataset[j][k]] = 1;
+            }
+        }
+      }
+      if(i<=1e9 || i % 100 == 0)
+      {
+      if (tot == 0)
+        continue;
+       
+      HashMap ret;
+      for (uint64_t j = 0; j < thread_num; j++)
+      {
+        for (uint64_t k = 0; k < BUCKET_LENGTH * COUNTER_PER_BUCKET; k++)
+        {
+          if (threads_outcome[j].outcome[i][k].second == 0)
+            continue;
+          ret[threads_outcome[j].outcome[i][k].first] = threads_outcome[j].outcome[i][k].second;
+        }
+      }
+      outputFile0 << "Tot:" << std::to_string(tot) << std::endl;
+      HHCompare(ret, real, tot * ALPHA, &outputFile0);
+      }
+    }
+    outputFile0.close();
+
   }
 
   /**
@@ -280,7 +482,6 @@ private:
     auto start_time = std::chrono::high_resolution_clock::now();
 #endif
     insert(dataset, sketch, que, thread_id, sketch_sub_section);
-
 #ifdef MEASURETIME
     auto end_time = std::chrono::high_resolution_clock::now();
     std::chrono::duration<double, std::milli> duration = end_time - start_time;
@@ -292,6 +493,7 @@ private:
     {
       process_queue(que, global_sketch, thread_id);
     }
+    finish_cnt.value = thread_num;
     delete sketch;
   }
 
@@ -307,6 +509,8 @@ private:
         process_counter[thread_id].value.store(i + 1, std::memory_order_relaxed);
       if (i % PROCESSGAP == 0)
         process_queue(queue_group, global_sketch, thread_id);
+      if( i % 500 == 0)
+        real_value_for_query[thread_id].value.store(i+1,std::memory_order_relaxed);
     }
     process_counter[thread_id].value.store(length);
   }
@@ -348,7 +552,6 @@ private:
     bool update_flag = false;
     uint64_t minVal = 0x7fffffff;
     uint32_t minPos = 0;
-    // uint64_t temp_val = 1;
     uint64_t idx = pos % FILTER_BUCKET_LENGTH;
     for (uint32_t j = 0; j < COUNTER_PER_BUCKET_FILTER; j++)
     {
@@ -497,6 +700,31 @@ private:
       }
     }
     this->round[thread_id].value++;
+    if(cnt <= 10)
+      return;
+    UpdateSnapshot(thread_id);
+  }
+
+  inline void UpdateSnapshot(uint64_t thread_id){
+    uint32_t expected[2]={0x00000100,0x01010000};
+    uint32_t swap[2] = {0x01000100,0x00010000};
+    // uint32_t set[]
+    uint32_t local_round = this->thread_snapshot_round[thread_id].value;
+    //CAS strong
+    uint32_t exchange = this->query_flag[thread_id].
+    value.compare_exchange_strong(expected[local_round],swap[local_round]);
+    //--------
+    local_round = local_round ^ exchange; 
+    uint64_t idx = 0;
+    for (uint64_t i = 0; i < BUCKET_LENGTH; i++) {
+      for (uint64_t j = 0; j < COUNTER_PER_BUCKET; j++) {
+        this->threads_outcome[thread_id].outcome_cache.double_outcome_cache[local_round].array[idx++] = std::pair<Key, uint64_t>(
+          this->global_buckets[thread_id].buckets[i].ID[j],
+          this->global_buckets[thread_id].buckets[i].count[j]);
+      }
+    }
+    this->thread_snapshot_round[thread_id].value^=1;
+    this->query_flag[thread_id].value.fetch_xor(0x01000000);
   }
 
 };

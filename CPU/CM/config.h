@@ -4,7 +4,7 @@
 #include "CM.h"
 #include <cstddef>
 
-#define THREAD_NUM 64
+#define THREAD_NUM 63
 // Configuration for the sketch
 #define LENGTH (1<<16)
 #define HASH_NUM 3
@@ -22,4 +22,6 @@ template<typename Key>
 using MyChild_CM = Child_CM<Key, HASH_NUM, LENGTH>;
 #define ALPHA 0.0002 // Threshold for finding heavy hitters∂
 #define PROMASK 0x7f
+#define NUM_OUTCOME 100000
+#define ARRAY_SIZE 128
 #endif
