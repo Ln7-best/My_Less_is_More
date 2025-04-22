@@ -1,8 +1,7 @@
 #ifndef CM_H
 #define CM_H
 #include <cstdint>
-#define SKIPHH
-#include "sketch.h"
+#include <cstring>
 #include <chrono>
 // #define QTIMESTAMP
 
@@ -30,11 +29,5 @@ public:
 
   ~Child_CM() {}
 
-  void insert_one(const Key &packet) {}
-
-  HashMap query_all() {
-    HashMap ret;
-    return ret;
-  }
 };
 #endif

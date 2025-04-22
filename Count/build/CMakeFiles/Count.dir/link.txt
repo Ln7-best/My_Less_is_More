@@ -1,0 +1,1 @@
+/usr/bin/c++ -O3 -faligned-new -pthread -mavx2 -O3 -DNDEBUG CMakeFiles/Count.dir/main.cpp.o -o Count 

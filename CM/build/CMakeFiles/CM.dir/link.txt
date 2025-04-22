@@ -1,1 +1,1 @@
-/usr/bin/c++ -O3 -faligned-new -pthread -mavx2 -lnuma -O3 -DNDEBUG CMakeFiles/CM.dir/main.cpp.o -o CM  -lnuma 
+/usr/bin/c++ -O3 -faligned-new -pthread -mavx2 -O3 -DNDEBUG CMakeFiles/CM.dir/main.cpp.o -o CM  -lnuma 

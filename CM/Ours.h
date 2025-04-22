@@ -1,12 +1,12 @@
 #ifndef OURS_H
 #define OURS_H
-#include "heap.h"
 #include <algorithm>
 #include <atomic>
 #include <chrono>
 #include "readerwriterqueue.h"
 #include "config.h"
 #include "CM.h"
+#include "hash.h"
 #include <barrier>
 #include <cstdint>
 #include <iomanip>
@@ -15,7 +15,8 @@
 #include <ratio>
 #include <vector>
 #include <unordered_set>
-// #define ONLINEQUERY
+#include <unordered_map>
+#define ONLINEQUERY
 const uint64_t PROCESSGAP = 100000;
 const uint64_t COUTERGAP = PROCESSGAP / 100;
 struct alignas(64) GlobalSketchSubSection
@@ -83,7 +84,7 @@ struct alignas(64) QueryOutcome
     {
 
       outcome[i] = static_cast<T *>(
-          std::aligned_alloc(64, sizeof(T) * ARRAY_SIZE));
+          aligned_alloc(64, sizeof(T) * ARRAY_SIZE));
       if (!outcome[i])
       {
         std::cerr << "Memory allocation failed for outcome[" << i << "]\n";
@@ -136,6 +137,7 @@ private:
   typedef std::pair<Key, uint64_t> KV_Pair;
   QueryOutcome<KV_Pair> threads_outcome[thread_num];
 #endif
+  typedef std::unordered_map<Key, int32_t> HashMap;
   GlobalSketchSubSection global_sketch[thread_num];
   uint32_t dataset_size[thread_num];
   std::atomic<uint32_t> partition_num;
@@ -231,6 +233,7 @@ private:
       thread_snapshot_round[i].value = 0;
       query_flag[i].value.store(0);
 #endif
+      process_counter[i].value.store(0);
       operation_cnt[i].value = 0;
       global_cnt[i].value = 0;
       round[i].value = 0;
@@ -354,21 +357,11 @@ private:
   {
     uint64_t cnt = 0;
     issue_cnt.value = 0;
-    uint64_t sum = 0;
     while (finish < thread_num)
     {
       issue_cnt.value++;
       std::this_thread::sleep_for(std::chrono::microseconds(1));
       IssueQuery();
-    }
-    for (uint64_t i = 0; i < thread_num; i++)
-    {
-      for (uint64_t j = 0; j < ARRAY_SIZE; j++)
-      {
-        sum += threads_outcome[i].outcome[0][j].first;
-        sum += threads_outcome[i].outcome[0][j].second;
-      }
-      sum += threads_outcome[i].process_snapshot[0];
     }
     std::cout << "issue count:" << issue_cnt.value << std::endl;
   }

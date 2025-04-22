@@ -6,7 +6,7 @@
 #include <mutex>
 #include <iostream>
 #include <algorithm>
-
+#include <atomic>
 #define MAX(a, b) (a > b ? a : b)
 #define MIN(a, b) (a < b ? a : b)
 struct alignas(64) Paddedatomicint64
@@ -110,58 +110,5 @@ static bool setaffinity(std::thread *thd, uint32_t coreId)
     return true;
 }
 #endif
-
-static std::mutex mtx;
-
-static void CDF(uint32_t *array, uint32_t length)
-{
-    double sum = 0, preSum = 0;
-
-    for (uint32_t i = 0; i < length; ++i)
-    {
-        sum += array[i];
-    }
-
-    mtx.lock();
-    for (uint32_t i = 0; i < length; ++i)
-    {
-        preSum += array[i];
-        std::cout << preSum / sum << ",";
-    }
-
-    std::cout << std::endl
-              << std::endl;
-    mtx.unlock();
-}
-
-inline static void Rank(double *array, uint32_t length)
-{
-    std::sort(array, array + length);
-
-    mtx.lock();
-    for (uint32_t i = 1; i < 1000; ++i)
-    {
-        std::cout << array[uint32_t(0.001 * i * length)] << ",";
-    }
-
-    std::cout << std::endl
-              << std::endl;
-    mtx.unlock();
-}
-
-template <typename Callable>
-void measure_time(Callable &&code_block, std::vector<double> &timings)
-{
-    auto start_time = std::chrono::high_resolution_clock::now();
-
-    // 执行代码块
-    std::forward<Callable>(code_block)();
-
-    auto end_time = std::chrono::high_resolution_clock::now();
-    std::chrono::duration<double, std::nano> duration = end_time - start_time;
-
-    // 将测量结果存入向量
-    timings.emplace_back(duration.count());
-}
 
 #endif

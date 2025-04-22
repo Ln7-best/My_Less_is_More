@@ -1,0 +1,3 @@
+/users/ln7/LIM_new_version/Less-is-More/SS/build/CMakeFiles/SS.dir
+/users/ln7/LIM_new_version/Less-is-More/SS/build/CMakeFiles/edit_cache.dir
+/users/ln7/LIM_new_version/Less-is-More/SS/build/CMakeFiles/rebuild_cache.dir

@@ -13,8 +13,6 @@ template <typename Key>
 class Benchmark
 {
 public:
-  typedef std::unordered_map<Key, int32_t> HashMap;
-
   /**
    * Load a binary file (dataset) and get the statistics
    */
@@ -36,7 +34,6 @@ public:
 
 private:
   LoadResult result;
-  HashMap mp;
 };
 
 #endif

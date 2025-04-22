@@ -140,64 +140,11 @@ private:
         return (x << bits) | (x >> (32 - bits));
     }
 };
-// uint32_t seed0, seed1, seed2, seed3;
-// class CW4B
-// {
-// public:
-//     static inline uint32_t hash31(uint64_t a, uint64_t b, uint64_t x)
-//     {
-//         unsigned long long result;
-//         unsigned int lresult;
 
-//         result = (a * x) + b;
-//         result = ((result >> (unsigned int)HL) + result) & (unsigned long long)MOD;
-//         lresult = (unsigned int)result;
-
-//         return lresult;
-//     }
-//     static inline uint32_t hash(const uint8_t *data)
-//     {
-//         uint64_t x = *(uint64_t *)data;
-//         return hash31(hash31(hash31(seed0, seed1, x), seed2, x), seed3, x);
-//     }
-// };
-
-// template <typename T>
-// inline uint32_t hash(const T &data, uint32_t seed)
-// {
-//     return XXHash32::hash((uint8_t *)&data, sizeof(T), seed);
-// }
-// void init_seeds(unsigned int I1, unsigned int I2)
-// {
-//     const unsigned int k_mask = 0xffffffff;
-
-//     seed0 = ((I1 << 16) ^ (I2 & 0177777)) & k_mask;
-
-//     I1 = 36969 * (I1 & 0177777) + (I1 >> 16);
-//     I2 = 18000 * (I2 & 0177777) + (I2 >> 16);
-
-//     seed1 = ((I1 << 16) ^ (I2 & 0177777)) & k_mask;
-
-//     I1 = 36969 * (I1 & 0177777) + (I1 >> 16);
-//     I2 = 18000 * (I2 & 0177777) + (I2 >> 16);
-
-//     seed2 = ((I1 << 16) ^ (I2 & 0177777)) & k_mask;
-
-//     I1 = 36969 * (I1 & 0177777) + (I1 >> 16);
-//     I2 = 18000 * (I2 & 0177777) + (I2 >> 16);
-
-//     seed3 = ((I1 << 16) ^ (I2 & 0177777)) & k_mask;
-// }
 template <typename T>
 inline uint32_t hash(const T &data, uint32_t seed)
 {
     return XXHash32::hash((uint8_t *)&data, sizeof(T), seed);
 }
-// template <typename T>
-// inline uint32_t hash_(const T &data, uint32_t seed)
-// {
-//     // std::cout << "hash" << std::endl;
-//     return CW4B::hash((uint8_t *)&data);
-//     // return XXHash32::hash((uint8_t *)&data, sizeof(T), seed);
-// }
+
 #endif

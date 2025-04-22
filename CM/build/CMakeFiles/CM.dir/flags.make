@@ -6,5 +6,5 @@ CXX_DEFINES =
 
 CXX_INCLUDES = -I/users/ln7/LIM_new_version/Less-is-More/CM/. -I/users/ln7/LIM_new_version/Less-is-More/CM/.. -I/users/ln7/LIM_new_version/Less-is-More/CM/../common -I/users/ln7/LIM_new_version/Less-is-More/CM/../queue -I/users/ln7/LIM_new_version/Less-is-More/CM/../sketch
 
-CXX_FLAGS = -O3 -faligned-new -pthread -mavx2 -lnuma -O3 -DNDEBUG -std=gnu++20
+CXX_FLAGS = -O3 -faligned-new -pthread -mavx2 -O3 -DNDEBUG -std=gnu++14
 
