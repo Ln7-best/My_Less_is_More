@@ -10,12 +10,13 @@ We applied the framework to five different sketches. The mapping between the cod
 | UnivMon | UnivMon                  |
 | DD          | DDSketch |
 | SS  | Spreader Sketch                       |
+A selection of experimental results is available in the exp_results directory.
 ## 2 How to run 
 ### 2.1 Requirements
-The code has been tested and verified to run in the following environment:
+The following environment is recommended for running the code:
 - **Ubuntu 22.04 LTS**
 - **CMake ≥ 3.10**
-- **g++ 11.4.0**
+- **g++ ≥ 11.4.0**
 
 Additionally, at least 25 GB of free disk space is required to accommodate a single generated dataset with 3.2e9 keys.
 ### 2.2 Prepare datasets
