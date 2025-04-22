@@ -27,10 +27,7 @@ public:
     // CubicallyInterpolatedMapping mapping;
     // double multiplier;
     Child_DD(){
-        // log_gamma = log1p(0.001);
         log_gamma = log(GAMMA);
-        // double C = 10.0 / 7;
-        // multiplier = 1.0 / std::log1p(GAMMA_ADD) / C;
         memset(sketch, 0, sizeof(Value) * LENGTH);
     }
 
