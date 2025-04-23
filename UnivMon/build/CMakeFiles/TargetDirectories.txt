@@ -1,3 +1,0 @@
-/users/ln7/LIM_new_version/Less-is-More/UnivMon/build/CMakeFiles/UnivMon.dir
-/users/ln7/LIM_new_version/Less-is-More/UnivMon/build/CMakeFiles/edit_cache.dir
-/users/ln7/LIM_new_version/Less-is-More/UnivMon/build/CMakeFiles/rebuild_cache.dir

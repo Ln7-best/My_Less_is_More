@@ -5,8 +5,6 @@
 #include <cstring>
 #include <chrono>
 #define GAMMA 1.001
-// #define GAMMA_ADD 0.020202020202020204
-
 typedef uint8_t Value;
 
 template<typename Key>
@@ -24,8 +22,6 @@ public:
 
     Value sketch[LENGTH];
     double log_gamma;
-    // CubicallyInterpolatedMapping mapping;
-    // double multiplier;
     Child_DD(){
         log_gamma = log(GAMMA);
         memset(sketch, 0, sizeof(Value) * LENGTH);

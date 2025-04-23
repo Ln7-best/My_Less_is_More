@@ -16,7 +16,7 @@
 #include <readerwriterqueue.h>
 #include <fstream>
 #include <unordered_map>
-#define ONLINEQUERY
+// #define ONLINEQUERY
 const uint64_t PROCESSGAP = 100000;
 const uint64_t COUTERGAP = PROCESSGAP / 100;
 struct alignas(64) GlobalSketchSubSection
@@ -247,7 +247,6 @@ private:
       tot_keys += dataset_size[i];
     }
     std::cout << "Insert " << tot_keys << " keys." << std::endl;
-    // HashMap ret = GetHHCandidates();
   }
   /**
    * The thread of each worker

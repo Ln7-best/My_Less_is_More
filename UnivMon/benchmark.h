@@ -12,18 +12,11 @@ template <typename Key>
 class Benchmark
 {
 public:
-    typedef std::unordered_map<Key, int32_t> HashMap;
-
-    Benchmark(const char *PATH, uint64_t benchtimes)
+    Benchmark(const char *PATH)
     {
         result = Load(PATH);
-        this->benchtimes = benchtimes;
         uint64_t length = result.length / sizeof(Key);
         Key *dataset = (Key *)result.start;
-
-        // for(uint64_t i = 0;i < length;++i){
-        //     mp[dataset[i]] += 1;
-        // }
     }
 
     ~Benchmark()
@@ -33,23 +26,14 @@ public:
 
     void Bench()
     {
-        double tot_throughput = 0;
-        for (uint64_t i = 0; i < benchtimes; i++)
-        {
-            auto alg = new Ours<Key, THREAD_NUM>;
-            double throughput;
-            alg->update(result.start, result.length, mp, &throughput);
-            delete alg;
-            tot_throughput += throughput;
-        }
-        std::cout << "average throughput:" << tot_throughput / benchtimes
-                  << std::endl;
+        auto alg = new Ours<Key, THREAD_NUM>;
+        alg->Update(result.start, result.length);
+        delete alg;
     }
 
 private:
     uint64_t benchtimes;
     LoadResult result;
-    HashMap mp;
 };
 
 #endif

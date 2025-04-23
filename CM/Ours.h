@@ -16,7 +16,7 @@
 #include <vector>
 #include <unordered_set>
 #include <unordered_map>
-#define ONLINEQUERY
+// #define ONLINEQUERY
 const uint64_t PROCESSGAP = 100000;
 const uint64_t COUTERGAP = PROCESSGAP / 100;
 struct alignas(64) GlobalSketchSubSection
@@ -363,7 +363,7 @@ private:
       std::this_thread::sleep_for(std::chrono::microseconds(1));
       IssueQuery();
     }
-    std::cout << "issue count:" << issue_cnt.value << std::endl;
+    std::cout << "Issue count:" << issue_cnt.value << std::endl;
   }
 #endif
 

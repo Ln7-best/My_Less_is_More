@@ -13,8 +13,9 @@
 #include "hash.h"
 #include "util.h"
 #include <unordered_map>
-#define MEASURETIME
-#define ONLINEQUERY
+#include <fstream>
+#include <unordered_set>
+// #define ONLINEQUERY
 const uint64_t PROCESSGAP = 17000;
 struct alignas(64) GlobalSketchSubSection
 {
@@ -94,13 +95,10 @@ class Ours
 {
 public:
   typedef std::unordered_map<Key, uint64_t> HashMap;
-  void update(void *start, uint64_t size, HashMap mp,
-              double *throughput = nullptr)
+  void Update(void *start, uint64_t size)
   {
-    size = size;
     std::thread parent;
-    parent = std::thread(&Ours::ParentThread, this, &parent, start, size, &mp,
-                         throughput);
+    parent = std::thread(&Ours::ParentThread, this, &parent, start, size);
     parent.join();
   }
 
@@ -131,18 +129,7 @@ private:
       vec.push_back(start[i]);
     }
   }
-  static void QuantCompare(HashMap test, HashMap &real)
-  {
 
-    for (int i = 0; i < 8; i++)
-    {
-      std::cout << i << ": " << ((double)test[i] / (double)real[i]) - 1 << std::endl;
-    }
-  }
-
-  /**
-   * The thread of the aggregator
-   */
   HashMap GetQuantiles()
   {
     HashMap ret;
@@ -176,8 +163,7 @@ private:
     return ret;
   }
 
-  void ParentThread(std::thread *thisThd, void *start, uint64_t size,
-                    HashMap *mp, double *throughput)
+  void ParentThread(std::thread *thisThd, void *start, uint64_t size)
   {
 #ifdef __linux__
     if (!setaffinity(thisThd, thread_num))
@@ -185,7 +171,6 @@ private:
 #endif
     std::atomic<int32_t> finish(0);
     std::thread thd[thread_num];
-    std::thread measure_thd;
     partition_num.store(0);
     for (uint64_t i = 0; i < thread_num; i++)
     {
@@ -223,35 +208,13 @@ private:
 #ifdef ONLINEQUERY
     Query(finish);
 #endif
+    uint64_t tot_keys = 0;
     for (uint32_t i = 0; i < thread_num; ++i)
     {
       thd[i].join();
+      tot_keys += dataset_size[i];
     }
-    while (finish.load(std::memory_order_seq_cst) < thread_num)
-    {
-    }
-    double avg_time = 0;
-    double max_time = 0;
-    double avg_numa1 = 0;
-    uint64_t tot_size = 0;
-    double avg_numa2 = 0;
-    for (uint32_t i = 0; i < thread_num; i++)
-    {
-      avg_time += running_time[i];
-      max_time = std::max(max_time, running_time[i]);
-      tot_size += dataset_size[i];
-      std::cout << "thread id: " << i << " dataset size: " << dataset_size[i]
-                << " running time: " << running_time[i] << std::endl;
-    }
-    avg_time /= thread_num;
-    *throughput = tot_size / max_time * 1000;
-    double avg_throughput = tot_size / avg_time * 1000;
-    std::cout << "tot_process" << tot_size << std::endl;
-    std::cout << "avg: " << avg_time << std::endl;
-    std::cout << "max: " << max_time << std::endl;
-    std::cout << "avg throughput: " << avg_throughput << std::endl;
-    std::cout << "throughput: "
-              << *throughput << std::endl;
+    std::cout << "Insert " << tot_keys << " keys." << std::endl;
   }
 
   void ChildThread(std::thread *thisThd, uint32_t thread_id, void *start,
@@ -270,16 +233,8 @@ private:
     while (partition_num < thread_num)
     {
     }
-#ifdef MEASURETIME
-    auto start_time = std::chrono::high_resolution_clock::now();
-#endif
     insert(dataset, sketch, que, thread_id);
 
-#ifdef MEASURETIME
-    auto end_time = std::chrono::high_resolution_clock::now();
-    std::chrono::duration<double, std::milli> duration = end_time - start_time;
-    running_time[thread_id] = duration.count();
-#endif
     dataset_size[thread_id] = dataset.size();
     (*finish).fetch_add(1, std::memory_order_seq_cst);
     while ((*finish).load(std::memory_order_seq_cst) < thread_num)
@@ -362,7 +317,7 @@ private:
       std::this_thread::sleep_for(std::chrono::microseconds(1));
       IssueQuery();
     }
-    std::cout << "issue count:" << issue_cnt.value << std::endl;
+    std::cout << "Issue count:" << issue_cnt.value << std::endl;
   }
 #endif
 
@@ -483,16 +438,13 @@ private:
                 struct GlobalSketchSubSection *sketch_sub_section,
                 uint64_t thread_id = 0)
   {
-    uint64_t process_cnt = 0;
     DD_Entry<Key> temp;
-    uint64_t que_cnt = 0;
-    uint64_t candidate_cnt = 0;
     uint64_t cnt = 0;
     for (uint64_t i = 0; i < thread_num; i++)
     {
       while (q_group[thread_id][i].try_dequeue(temp))
       {
-        process_cnt++;
+        cnt++;
         const uint16_t &pos = temp.pos;
         sketch_sub_section[thread_id].counter[pos] += (temp.value);
       }
@@ -504,7 +456,7 @@ private:
 #endif
   }
 #ifdef ONLINEQUERY
-  inline void UpdateSnapshot(uint64_t thread_id,  struct GlobalSketchSubSection *sketch_sub_section)
+  inline void UpdateSnapshot(uint64_t thread_id, struct GlobalSketchSubSection *sketch_sub_section)
   {
     // a lightweight RCU strategy for single writer to update the heavy hitter candidates snapshot
 

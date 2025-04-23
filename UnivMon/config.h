@@ -5,7 +5,7 @@
 #include <cstddef>
 #include <cmath>
 #define MAX_LEVEL 6
-#define THREAD_NUM 63
+#define THREAD_NUM 64
 #define HASH_NUM 3
 #define LENGTH (1 << 16)
 #define HEAP_SIZE 1024

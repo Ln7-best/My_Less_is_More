@@ -89,7 +89,7 @@ int main(int argc, char *argv[])
     std::string outputFileName = argv[1];
     uint64_t value;
     std::default_random_engine generator;
-    ZipfGenerator zipf_generator({1, 1e7}, 0.99);
+    ZipfGenerator zipf_generator({1, 10000000}, 0.99);
     std::ofstream outFile(outputFileName, std::ios::binary);
     if (!outFile)
     {

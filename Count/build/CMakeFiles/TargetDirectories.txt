@@ -1,3 +1,0 @@
-/users/ln7/LIM_new_version/Less-is-More/Count/build/CMakeFiles/Count.dir
-/users/ln7/LIM_new_version/Less-is-More/Count/build/CMakeFiles/edit_cache.dir
-/users/ln7/LIM_new_version/Less-is-More/Count/build/CMakeFiles/rebuild_cache.dir

@@ -17,8 +17,7 @@
 #include "readerwriterqueue.h"
 #include <unordered_set>
 #include "hash.h"
-#define MEASURETIME
-#define ONLINEQUERY
+// #define ONLINEQUERY
 const uint64_t PROCESSGAP = 50000;
 const uint64_t COUTERGAP = PROCESSGAP / 100;
 
@@ -107,8 +106,8 @@ struct alignas(64) QueryOutcome
   {
     for (int i = 0; i < NUM_OUTCOME; i++)
     {
-      for(int j=0; j < MAX_LEVEL; j++)
-        std::free(outcome[i][j]); 
+      for (int j = 0; j < MAX_LEVEL; j++)
+        std::free(outcome[i][j]);
     }
   }
 };
@@ -119,13 +118,11 @@ class Ours
 {
 public:
   typedef std::unordered_map<Key, int32_t> HashMap;
-  void update(void *start, uint64_t size, HashMap mp,
-              double *throughput = nullptr)
+  void Update(void *start, uint64_t size)
   {
     size = size;
     std::thread parent;
-    parent = std::thread(&Ours::ParentThread, this, &parent, start, size, &mp,
-                         throughput);
+    parent = std::thread(&Ours::ParentThread, this, &parent, start, size);
     parent.join();
   }
 
@@ -142,7 +139,6 @@ private:
 #endif
   const uint64_t filter_len[6] = {64, 32, 16, 8, 4, 2};
   GlobalSketchSubSection global_sketch[thread_num];
-  double running_time[thread_num];
   uint32_t dataset_size[thread_num];
   std::atomic<uint32_t> partition_num;
   Paddedatomic process_counter[thread_num];
@@ -153,52 +149,6 @@ private:
   struct Paddedint global_cnt[thread_num];
   struct Paddedint round[thread_num];
   myQueue que[thread_num][thread_num];
-  static void HHCompare(HashMap test, HashMap real, int32_t threshold, std::ofstream *outputFile = nullptr)
-  {
-    double estHH = 0, HH = 0, both = 0;
-    double CR = 0, PR = 0, AAE = 0, ARE = 0;
-    uint64_t cnt = 0;
-    for (auto it = test.begin(); it != test.end(); ++it)
-    {
-      if (it->second > threshold)
-      {
-        estHH += 1;
-        if (real[it->first] > threshold)
-        {
-          both += 1;
-          AAE += abs(real[it->first] - it->second);
-          ARE += abs(real[it->first] - it->second) / (double)real[it->first];
-        }
-      }
-      else if ((int64_t)threshold - (int64_t)it->second < 10000)
-      {
-        cnt++;
-      }
-    }
-    uint64_t test_hit = 0;
-    for (auto it = real.begin(); it != real.end(); ++it)
-    {
-      if (it->second > threshold)
-      {
-        HH += 1;
-      }
-    }
-    if (!outputFile)
-      std::cout << "real HH:" << HH << std::endl
-                << "correct HH: " << both << std::endl
-                << "test hit: " << test_hit << std::endl
-                << "num: " << cnt << std::endl
-                << "CR: " << both / HH << std::endl
-                << "PR: " << both / estHH << std::endl
-                << "AAE: " << AAE / both << std::endl
-                << "ARE: " << ARE / both << std::endl
-                << std::endl;
-    else
-      *outputFile << "CR: " << std::to_string(both / HH) << std::endl
-                  << "PR: " << std::to_string(both / estHH) << std::endl
-                  << "AAE: " << std::to_string(AAE / both) << std::endl
-                  << "ARE: " << std::to_string(ARE / both) << std::endl;
-  }
   static void Partition(Key *start, uint64_t size, uint32_t id, std::vector<Key> &vec)
   {
     uint64_t interval = size / thread_num;
@@ -234,8 +184,7 @@ private:
     return ret;
   }
 
-  void ParentThread(std::thread *thisThd, void *start, uint64_t size,
-                    HashMap *mp, double *throughput)
+  void ParentThread(std::thread *thisThd, void *start, uint64_t size)
   {
 #ifdef __linux__
     if (!setaffinity(thisThd, thread_num))
@@ -308,85 +257,14 @@ private:
 #ifdef ONLINEQUERY
     Query(finish);
 #endif
+
+    uint64_t tot_keys = 0;
     for (uint32_t i = 0; i < thread_num; ++i)
     {
       thd[i].join();
+      tot_keys += dataset_size[i];
     }
-    while (finish.load(std::memory_order_seq_cst) < thread_num)
-    {
-    }
-    double avg_time = 0;
-    double max_time = 0;
-    double avg_numa1 = 0;
-    uint64_t tot_size = 0;
-    double avg_numa2 = 0;
-    for (uint32_t i = 0; i < thread_num; i++)
-    {
-      avg_time += running_time[i];
-      max_time = std::max(max_time, running_time[i]);
-      tot_size += dataset_size[i];
-      std::cout << "thread id: " << i << " dataset size: " << dataset_size[i]
-                << " running time: " << running_time[i]
-                << std::endl;
-    }
-    avg_time /= thread_num;
-    *throughput = tot_size / max_time * 1000;
-    double avg_throughput = tot_size / avg_time * 1000;
-    std::cout << "tot_process" << tot_size << std::endl;
-    std::cout << "avg: " << avg_time << std::endl;
-    std::cout << "max: " << max_time << std::endl;
-    std::cout << "avg throughput: " << avg_throughput << std::endl;
-    std::cout << "throughput: "
-              << *throughput << std::endl;
-    for (uint64_t i = 0; i < thread_num; i++)
-    {
-      double max = 0;
-      double min = 1e9;
-      double tot = 0;
-      uint64_t expansion_cnt = 0;
-      for (uint64_t j = 0; j < thread_num; j++)
-      {
-
-        for (auto time : que[j][i].make_block_time)
-        {
-          max = std::max(time, max);
-          min = std::min(time, min);
-          tot += time;
-          expansion_cnt += que[j][i].expansion_cnt;
-        }
-      }
-
-      std::cout << " thread: " << i << " expansion count: " << expansion_cnt
-                << " max: " << std::fixed << std::setprecision(10) << max
-                << " min: " << std::fixed << std::setprecision(10) << min
-                << " tot: " << std::fixed << std::setprecision(10) << tot
-                << std::endl;
-    }
-
-    for (uint64_t i = 0; i < thread_num; i++)
-    {
-      double max = 0;
-      double min = 1e9;
-      double tot = 0;
-      uint64_t expansion_cnt = 0;
-      for (uint64_t j = 0; j < thread_num; j++)
-      {
-        for (auto time : que[i][j].make_block_time)
-        {
-          max = std::max(time, max);
-          min = std::min(time, min);
-          tot += time;
-          expansion_cnt += que[i][j].expansion_cnt;
-        }
-      }
-      std::cout << " thread: " << i << " expansion count: " << expansion_cnt
-                << " max: " << std::fixed << std::setprecision(10) << max
-                << " min: " << std::fixed << std::setprecision(10) << min
-                << " tot: " << std::fixed << std::setprecision(10) << tot
-                << std::endl;
-    }
-    // HashMap ret = query_all();
-    // HHCompare(ret, (*mp), size / sizeof(Key) * ALPHA);
+    std::cout << "Insert " << tot_keys << " keys." << std::endl;
   }
 
   /**
@@ -408,16 +286,7 @@ private:
     while (partition_num < thread_num)
     {
     }
-#ifdef MEASURETIME
-    auto start_time = std::chrono::high_resolution_clock::now();
-#endif
     insert(dataset, sketch, que, thread_id);
-
-#ifdef MEASURETIME
-    auto end_time = std::chrono::high_resolution_clock::now();
-    std::chrono::duration<double, std::milli> duration = end_time - start_time;
-    running_time[thread_id] = duration.count();
-#endif
     dataset_size[thread_id] = dataset.size();
     (*finish).fetch_add(1, std::memory_order_seq_cst);
     while ((*finish).load(std::memory_order_seq_cst) < thread_num)
@@ -502,7 +371,7 @@ private:
       std::this_thread::sleep_for(std::chrono::microseconds(1));
       IssueQuery();
     }
-    std::cout << "issue count:" << issue_cnt.value << std::endl;
+    std::cout << "Issue count:" << issue_cnt.value << std::endl;
   }
 #endif
 
@@ -657,7 +526,7 @@ private:
     uint64_t que_cnt = 0;
     uint64_t candidate_cnt = 0;
     uint64_t cnt = 0;
-    bool level_update_flag[MAX_LEVEL]={false};
+    bool level_update_flag[MAX_LEVEL] = {false};
     for (uint64_t i = 0; i < thread_num; i++)
     {
       while (q_group[thread_id][i].try_dequeue(temp))
@@ -752,7 +621,7 @@ private:
   }
 
 #ifdef ONLINEQUERY
-  inline void UpdateSnapshot(uint64_t thread_id, bool* level_update_flag)
+  inline void UpdateSnapshot(uint64_t thread_id, bool *level_update_flag)
   {
     // a lightweight RCU strategy for single writer to update the heavy hitter candidates snapshot
 
@@ -764,16 +633,18 @@ private:
     uint32_t exchange = this->query_flag[thread_id].value.compare_exchange_strong(expected[local_round], swap[local_round]);
     local_round = local_round ^ exchange;
     uint64_t idx = 0;
-    for(uint64_t k = 0; k<MAX_LEVEL; k++)
+    for (uint64_t k = 0; k < MAX_LEVEL; k++)
     {
-      if(!level_update_flag[k])
+      if (!level_update_flag[k])
         continue;
       uint64_t idx = 0;
-      for (uint64_t i = 0; i < BUCKET_LENGTH; i++) {
-        for (uint64_t j = 0; j < COUNTER_PER_BUCKET; j++) {
+      for (uint64_t i = 0; i < BUCKET_LENGTH; i++)
+      {
+        for (uint64_t j = 0; j < COUNTER_PER_BUCKET; j++)
+        {
           this->threads_outcome[thread_id].outcome_cache[k].double_outcome_cache[local_round].array[idx++] = std::pair<Key, uint64_t>(
-            this->global_buckets[thread_id].buckets[k][i].ID[j],
-            this->global_buckets[thread_id].buckets[k][i].count[j]);
+              this->global_buckets[thread_id].buckets[k][i].ID[j],
+              this->global_buckets[thread_id].buckets[k][i].count[j]);
         }
       }
     }
@@ -783,136 +654,5 @@ private:
   }
 #endif
 
-  void ProcessQuery(void *start, uint64_t size)
-  {
-    HashMap real;
-    std::unordered_set<uint64_t> key_set;
-    // for (auto it = keyset.begin(); it != keyset.end(); it++)
-    //   real[*it] = 0;
-    std::vector<Key> dataset[thread_num];
-    for (uint32_t i = 0; i < thread_num; i++)
-    {
-      Partition((Key *)start, size / sizeof(Key), i, dataset[i]);
-    }
-
-#ifdef QLENGTHONLY
-    std::ofstream outputFile(
-        "/home/ln7/OctoSketch/eval/OctoSketchQLENSKIPHHLargeSet" +
-        std::to_string(thread_num) + std::to_string(PROMASK) + ".txt");
-    for (uint32_t i = 0; i < queue_lengths.size(); i++)
-    {
-      uint64_t tot = 0;
-      for (uint32_t j = 0; j < thread_num; j++)
-      {
-        tot += thd_packets[j][i];
-      }
-      if (tot == 0)
-        continue;
-      outputFile << tot << " " << queue_lengths[i] << std::endl;
-    }
-#else
-#ifdef AGGRESSIVE_PUSH
-std::ofstream outputFile("OctoSketchACCLargeSetSuperACC" +
-  std::to_string(thread_num) +
-  std::to_string(PROMASK) + ".txt");
-#else
-    std::ofstream outputFile0("test.txt");
-    // std::ofstream outputFile1("OctoSketchACCLargeSet0.002Snapshot" +
-    //                           std::to_string(thread_num) +
-    //                           std::to_string(PROMASK) + ".txt");
-    // std::ofstream outputFile2("OctoSketchACCLargeSet0.02Snapshot" +
-    //                             std::to_string(thread_num) +
-    //                             std::to_string(PROMASK) + ".txt");
-    // std::ofstream outputFile3("OctoSketchACCLargeSet0.0016" +
-    //                           std::to_string(thread_num) +
-    //                           std::to_string(PROMASK) + ".txt");     
-    // std::ofstream outputFile4("OctoSketchACCLargeSet0.0032" +
-    //                             std::to_string(thread_num) +
-    //                             std::to_string(PROMASK) + ".txt");     
-    // std::ofstream outputFile1("OctoSketchACCLargeSet0.02" +
-    //                             std::to_string(thread_num) +
-    //                             std::to_string(PROMASK) + ".txt");              
-#endif
-    for (uint64_t i = 0; i < issue_cnt.value - 1; i++)
-    {
-      uint64_t tot = 0;
-      for (uint64_t j = 0; j < thread_num; j++)
-      {
-        tot += threads_outcome[j].process_snapshot[i];
-        if (i == 0)
-        {
-          for (uint64_t k = 0; k < threads_outcome[j].process_snapshot[i];
-               k++)
-          {
-            if (key_set.find(dataset[j][k]) != key_set.end())
-            {
-              real[dataset[j][k]] += 1;
-            }
-            else
-            {
-              key_set.insert(dataset[j][k]);
-              real[dataset[j][k]] = 1;
-            }
-          }
-        }
-        else
-        {
-          for (uint64_t k = threads_outcome[j].process_snapshot[i - 1];
-               k < threads_outcome[j].process_snapshot[i]; k++)
-            if (key_set.find(dataset[j][k]) != key_set.end())
-            {
-              real[dataset[j][k]] += 1;
-            }
-            else
-            {
-              key_set.insert(dataset[j][k]);
-              real[dataset[j][k]] = 1;
-            }
-        }
-      }
-      // std::cout << "packets num: " << tot << std::endl;
-      if(i<=1e9 || i % 100 == 0)
-      {
-      if (tot == 0)
-        continue;
-       
-      HashMap ret;
-      for (uint64_t j = 0; j < thread_num; j++)
-      {
-        for(uint64_t t = 0 ;t < MAX_LEVEL; t++)
-        {
-          for (uint64_t k = 0; k < BUCKET_LENGTH * COUNTER_PER_BUCKET; k++)
-          {
-            if (threads_outcome[j].outcome[i][t][k].second == 0)
-              continue;
-            if(ret.find(threads_outcome[j].outcome[i][t][k].first) == ret.end())  
-              ret[threads_outcome[j].outcome[i][t][k].first] = threads_outcome[j].outcome[i][t][k].second;
-          }
-        }   
-      }
-      outputFile0 << "Tot:" << std::to_string(tot) << std::endl;
-      HHCompare(ret, real, tot * ALPHA, &outputFile0);
-      // outputFile1 << "Tot:" << std::to_string(tot) << std::endl;
-      // HHCompare(ret, real, tot * 0.002, &outputFile1);
-      // outputFile2 << "Tot:" << std::to_string(tot) << std::endl;
-      // HHCompare(ret, real, tot * 0.02, &outputFile2);
-      // outputFile3 << "Tot:" << std::to_string(tot) << std::endl;
-      // HHCompare(ret, real, tot * 0.0016, &outputFile3);
-      // outputFile4 << "Tot:" << std::to_string(tot) << std::endl;
-      // HHCompare(ret, real, tot * 0.0032, &outputFile4);
-      }
-
-      // if(tot>200050000)
-      // {
-      //   return;
-      // }
-    }
-#endif
-    outputFile0.close();
-    // outputFile1.close();
-    // outputFile2.close();
-    // outputFile3.close();
-    // outputFile4.close();
-  }
 };
 #endif
