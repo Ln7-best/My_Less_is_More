@@ -557,7 +557,7 @@ private:
                                   .load() *
                               incre;
           }
-          int64_t minimum = <int32_t,HASH_NUM>MedianK(count);
+          int64_t minimum = MedianK<int32_t,HASH_NUM>(count);
           if (minimum <= 0)
           {
             continue;
