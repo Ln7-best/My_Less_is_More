@@ -1,12 +1,8 @@
 #ifndef BENCHMARK_H
 #define BENCHMARK_H
-#define MEASUREAVGTHROUGHPUT
-// #define BENCHTIMES 2
 #include <cstdint>
 #include <vector>
-
 #include "loader.h"
-
 #include "Ours.h"
 
 template <typename Key>

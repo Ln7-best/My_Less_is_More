@@ -311,7 +311,7 @@ private:
     {
       threads_outcome[i].process_snapshot[round] = real_value_for_query[i].value.load();
     }
-    // a lightweight RCU strategy for single reader to get the Heavy Hitter candidates from the HH keeper
+    // a lightweight RCU based strategy for single reader to get the Heavy Hitter candidates from the HH keeper
     while (finish_cnt.value < thread_num)
     {
       for (uint64_t i = 0; i < thread_num; i++)
@@ -608,7 +608,7 @@ private:
 #ifdef ONLINEQUERY
   inline void UpdateSnapshot(uint64_t thread_id)
   {
-    // a lightweight RCU strategy for single writer to update the heavy hitter candidates snapshot
+    // a lightweight RCU based strategy for single writer to update the heavy hitter candidates snapshot
 
     // retrieve the snapshot buffer not being written according to the reader counter
     // occupy the free snapshot buffer by setting the writer flag

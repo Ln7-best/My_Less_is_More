@@ -246,7 +246,7 @@ private:
     {
       threads_outcome[i].process_snapshot[round] = real_value_for_query[i].value.load();
     }
-    // a lightweight RCU strategy for single reader to get the Heavy Hitter candidates from the HH keeper
+    // a lightweight RCU based strategy for single reader to get the Super Spreader candidates from the global sketch
     while (finish_cnt.value < thread_num)
     {
       for (uint64_t i = 0; i < thread_num; i++)
@@ -286,10 +286,7 @@ private:
       }
     }
   }
-  /**
-   * @brief function of the query thread, used to issue the query
-   * @param finish counter to record the number of finished worker
-   */
+
   void Query(std::atomic<int32_t> &finish)
   {
     uint64_t cnt = 0;
@@ -350,7 +347,7 @@ private:
         sketch[hashPos][pos[hashPos]].hll_rank[hll_pos] = rank;
         modify = true;
       }
-      // due to the unique properties of HLL, buckets with large distinct counts are pushed less frequently
+      // due to the unique properties of SS, buckets with large distinct counts are pushed less frequently
       // therefore, batching updates with small ranks is sufficient
       // there's no need to use a stash
       if (modify && rank > 4)
@@ -405,7 +402,7 @@ private:
 #ifdef ONLINEQUERY
   inline void UpdateSnapshot(uint64_t thread_id, struct  GlobalSketchSubSection *sketch_sub_section)
   {
-    // a lightweight RCU strategy for single writer to update the heavy hitter candidates snapshot
+    // a lightweight RCU based strategy for single writer to update the super spreader candidates snapshot
 
     // retrieve the snapshot buffer not being written according to the reader counter
     // occupy the free snapshot buffer by setting the writer flag

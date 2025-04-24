@@ -11,8 +11,6 @@ constexpr size_t ceil_div(size_t dividend, size_t divisor) {
 }
 const size_t sub_sketch_length = ceil_div(LENGTH, THREAD_NUM);
 
-
-
 template<typename Key>
 using MyChild_SS = Child_SS<Key, HASH_NUM, LENGTH>;
 
@@ -21,7 +19,5 @@ using MyChild_SS = Child_SS<Key, HASH_NUM, LENGTH>;
 #define PROMASK 0x7f
 
 #define NUM_OUTCOME 40000
-
-//#define QUEUELENGTH
 
 #endif

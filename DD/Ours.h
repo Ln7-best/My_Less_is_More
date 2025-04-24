@@ -263,7 +263,7 @@ private:
     {
       threads_outcome[i].process_snapshot[round] = real_value_for_query[i].value.load();
     }
-    // a lightweight RCU strategy for single reader to get the Heavy Hitter candidates from the HH keeper
+    // a lightweight RCU based strategy for single reader to get the snapshot of the global sketch
     while (finish_cnt.value < thread_num)
     {
       for (uint64_t i = 0; i < thread_num; i++)
@@ -289,7 +289,7 @@ private:
         {
           continue;
         }
-        // get the snapshot of the buffer
+        // get the snapshot buffer
         // any further queries for quantiles can be completed by reading this buffer
         for (uint64_t j = 0; j < sub_sketch_length; j++)
           threads_outcome[i].outcome[round][j] = this->threads_outcome[i].outcome_cache.double_outcome_cache[idx].array[j];
@@ -302,10 +302,7 @@ private:
       }
     }
   }
-  /**
-   * @brief function of the query thread, used to issue the query
-   * @param finish counter to record the number of finished worker
-   */
+
   void Query(std::atomic<int32_t> &finish)
   {
     uint64_t cnt = 0;
@@ -458,7 +455,7 @@ private:
 #ifdef ONLINEQUERY
   inline void UpdateSnapshot(uint64_t thread_id, struct GlobalSketchSubSection *sketch_sub_section)
   {
-    // a lightweight RCU strategy for single writer to update the heavy hitter candidates snapshot
+    // a lightweight RCU based strategy for single writer to update the global sketch snapshot
 
     // retrieve the snapshot buffer not being written according to the reader counter
     // occupy the free snapshot buffer by setting the writer flag

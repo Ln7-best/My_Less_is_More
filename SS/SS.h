@@ -4,7 +4,6 @@
 #include <ratio>
 #include <chrono>
 #include <cstring>
-// #define QTIMESTAMP
 #define HLL_LEN 63
 typedef uint8_t Value;
 template <typename Key> struct SS_Entry {

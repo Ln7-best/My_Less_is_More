@@ -17,7 +17,6 @@ constexpr size_t ceil_div(size_t dividend, size_t divisor) {
     return static_cast<size_t>(std::ceil(static_cast<double>(dividend) / divisor));
 }
 const size_t sub_sketch_length = ceil_div(LENGTH, THREAD_NUM);
-// const size_t sub_sketch_length = 1280;
 
 template<typename Key>
 using MyChild_Univ = Child_UnivMon<Key, MAX_LEVEL, HASH_NUM, LENGTH>;

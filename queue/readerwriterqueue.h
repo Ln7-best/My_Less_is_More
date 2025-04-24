@@ -228,7 +228,6 @@ public:
           reinterpret_cast<T *>(frontBlock_->data + nextBlockFront * sizeof(T));
 
       result = std::move(*element);
-      // element->~T();
       nextBlockFront = (nextBlockFront + 1) & frontBlock_->sizeMask;
 
       fence(memory_order_release);
@@ -237,8 +236,6 @@ public:
       return false;
     }
 
-    // counts.fetch_sub(1, std::memory_order_relaxed);
-    ;
     return true;
   }
 
@@ -279,16 +276,7 @@ public:
 #if HAS_EMPLACE
       new (location) T(std::forward<Args>(args)...);
 #else
-#ifdef WRITE_COMBINING
-      // // only work for CM
-      long long *dst_start = (long long *)location;
-      long long *src_start = (long long *)(&element);
-      for (size_t i = 0; i < CM_ENTRY_LEN; i++) {
-        _mm_stream_si64(dst_start + i, *(src_start + i));
-      }
-#else
       new (location) T(std::forward<U>(element));
-#endif
 #endif
 
       fence(memory_order_release);
@@ -311,17 +299,7 @@ public:
 #if HAS_EMPLACE
         new (location) T(std::forward<Args>(args)...);
 #else
-        // only work for CM
-#ifdef WRITE_COMBINING
-        long long *dst_start = (long long *)location;
-        long long *src_start = (long long *)(&element);
-        for (size_t i = 0; i < CM_ENTRY_LEN; i++) {
-          _mm_stream_si64(dst_start + i, *(src_start + i));
-        }
-#else
         new (location) T(std::forward<U>(element));
-#endif
-
 #endif
 
         tailBlockNext->tail = (nextBlockTail + 1) & tailBlockNext->sizeMask;
@@ -348,15 +326,7 @@ public:
 #if HAS_EMPLACE
         new (newBlock->data) T(std::forward<Args>(args)...);
 #else
-#ifdef WRITE_COMBINING
-        long long *dst_start = (long long *)newBlock->data;
-        long long *src_start = (long long *)(&element);
-        for (size_t i = 0; i < CM_ENTRY_LEN; i++) {
-          _mm_stream_si64(dst_start + i, *(src_start + i));
-        }
-#else
         new (newBlock->data) T(std::forward<U>(element));
-#endif
 #endif
         assert(newBlock->front == 0);
         newBlock->tail = newBlock->localTail = 1;
@@ -386,8 +356,6 @@ public:
     Block *tailBlock_ = tailBlock.load();
     size_t blockFront = tailBlock_->localFront;
     size_t blockTail = tailBlock_->tail.load();
-    // counts.fetch_add(1, std::memory_order_relaxed);
-
     size_t nextBlockTail = (blockTail + 1) & tailBlock_->sizeMask;
     if (nextBlockTail != blockFront ||
         nextBlockTail != (tailBlock_->localFront = tailBlock_->front.load())) {
@@ -397,15 +365,7 @@ public:
 #if HAS_EMPLACE
       new (location) T(std::forward<Args>(args)...);
 #else
-#ifdef WRITE_COMBINING
-      long long *dst_start = (long long *)location;
-      long long *src_start = (long long *)(&element);
-      for (size_t i = 0; i < CM_ENTRY_LEN; i++) {
-        _mm_stream_si64(dst_start + i, *(src_start + i));
-      }
-#else
       new (location) T(std::forward<U>(element));
-#endif
 #endif
 
       fence(memory_order_release);
@@ -429,16 +389,7 @@ public:
 #if HAS_EMPLACE
         new (location) T(std::forward<Args>(args)...);
 #else
-#ifdef WRITE_COMBINING
-        long long *dst_start = (long long *)location;
-        long long *src_start = (long long *)(&element);
-        for (size_t i = 0; i < CM_ENTRY_LEN; i++) {
-          _mm_stream_si64(dst_start + i, *(src_start + i));
-        }
-#else
         new (location) T(std::forward<U>(element));
-#endif
-
 #endif
 
         tailBlockNext->tail = (nextBlockTail + 1) & tailBlockNext->sizeMask;

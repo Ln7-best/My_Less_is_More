@@ -4,13 +4,8 @@
 #include <vector>
 
 #include "loader.h"
-
-// #include "Ideal.h"
-// #include "Merge.h"
 #include "Ours.h"
 #include <unordered_map>
-
-// #define THREAD_NUM 16
 
 template <typename Key>
 class Benchmark

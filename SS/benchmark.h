@@ -5,12 +5,7 @@
 
 #include "loader.h"
 #include <unordered_map>
-// #include "Ideal.h"
-// #include "Merge.h"
 #include "Ours.h"
-
-// #define THREAD_NUM 16
-
 template <typename Key>
 class Benchmark
 {

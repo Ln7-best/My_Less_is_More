@@ -6,8 +6,6 @@
 #include "loader.h"
 #include "Ours.h"
 
-// #define THREAD_NUM 16
-
 template <typename Key>
 class Benchmark
 {

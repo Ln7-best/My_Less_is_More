@@ -59,41 +59,36 @@ inline double durationns(TP finish, TP start)
     return std::chrono::duration_cast<std::chrono::nanoseconds>(finish - start).count();
 }
 
-template <typename T>
-T MEDIAN3(T array[3])
-{
-    if (array[0] < array[1])
-    {
-        if (array[2] < array[0])
-        {
-            return array[0];
+template <typename T, size_t k>
+T MedianK(T* array) {
+    if(k == 3) {
+        if (array[0] < array[1]) {
+            if (array[2] < array[0]) {
+                return array[0];
+            } else if (array[2] < array[1]) {
+                return array[2];
+            } else {
+                return array[1];
+            }
+        } else {
+            if (array[2] < array[1]) {
+                return array[1];
+            } else if (array[2] < array[0]) {
+                return array[2];
+            } else {
+                return array[0];
+            }
         }
-        else if (array[2] < array[1])
-        {
-            return array[2];
-        }
-        else
-        {
-            return array[1];
-        }
-    }
-    else
-    {
-        if (array[2] < array[1])
-        {
-            return array[1];
-        }
-        else if (array[2] < array[0])
-        {
-            return array[2];
-        }
-        else
-        {
-            return array[0];
+    } else {
+        std::sort(array, array + k);
+        
+        if (k % 2 == 1) {
+            return array[k / 2];  
+        } else {
+            return (array[k / 2 - 1] + array[k / 2]) / 2;  
         }
     }
 }
-
 #ifdef __linux__
 static bool setaffinity(std::thread *thd, uint32_t coreId)
 {

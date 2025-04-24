@@ -179,12 +179,10 @@ private:
     if (!setaffinity(thisThd, thread_num))
       return;
 #endif
-    // init_seeds(Random_Generate(), Random_Generate());
     std::atomic<int32_t> finish(0);
     std::thread thd[thread_num];
     std::thread measure_thd;
     partition_num.store(0);
-    // uint64_t global_sketch[HASH_NUM][LENGTH];
     for (uint64_t i = 0; i < thread_num; i++)
     {
       for (uint64_t j = 0; j < HASH_NUM * sub_sketch_length; j++)
@@ -248,9 +246,6 @@ private:
     }
     std::cout << "Insert " << tot_keys << " keys." << std::endl;
   }
-  /**
-   * The thread of each worker
-   */
   void ChildThread(std::thread *thisThd, uint32_t thread_id, void *start,
                    uint64_t size, std::atomic<int32_t> *finish)
   {
@@ -295,7 +290,7 @@ private:
     {
       threads_outcome[i].process_snapshot[round] = real_value_for_query[i].value.load();
     }
-    // a lightweight RCU strategy for single reader to get the Heavy Hitter candidates from the HH keeper
+    // a lightweight RCU based strategy for single reader to get the Heavy Hitter candidates from the HH keeper
     while (finish_cnt.value < thread_num)
     {
       for (uint64_t i = 0; i < thread_num; i++)
@@ -333,10 +328,7 @@ private:
       }
     }
   }
-  /**
-   * @brief function of the query thread, used to issue the query
-   * @param finish counter to record the number of finished worker
-   */
+
   void Query(std::atomic<int32_t> &finish)
   {
     uint64_t cnt = 0;
@@ -531,7 +523,7 @@ private:
                                   .load() *
                               incre;
           }
-          int64_t minimum = MEDIAN3(count);
+          int64_t minimum = MedianK<int32_t,HASH_NUM>(count);
           if (minimum <= 0)
           {
             continue;
@@ -588,7 +580,7 @@ private:
 #ifdef ONLINEQUERY
   inline void UpdateSnapshot(uint64_t thread_id)
   {
-    // a lightweight RCU strategy for single writer to update the heavy hitter candidates snapshot
+    // a lightweight RCU based strategy for single writer to update the heavy hitter candidates snapshot
 
     // retrieve the snapshot buffer not being written according to the reader counter
     // occupy the free snapshot buffer by setting the writer flag
