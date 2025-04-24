@@ -10,4 +10,3 @@ set(CMAKE_CXX_FLAGS "-O3 -faligned-new -pthread -mavx2")
 
 add_executable(CM main.cpp)
 target_link_libraries(CM)
-target_link_libraries(CM PRIVATE numa)
