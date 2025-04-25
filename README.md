@@ -9,7 +9,7 @@ We applied the framework to five different sketches. The mapping between the cod
 | Count  | Count-Sketch                              |
 | UnivMon | UnivMon                  |
 | DD          | DDSketch |
-| SS  | Spreader Sketch                       |
+| SS  | Spread Sketch                       |
 
 A selection of experimental results is available in the exp_results directory.
 ## 2 How to run 
