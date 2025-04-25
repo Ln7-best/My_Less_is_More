@@ -30,7 +30,7 @@ sudo chmod +x ./gen.sh
 ./gen.sh
 ```
 ### 2.3 Compile and run  
-Modify the value after #define THREAD_NUM in \<sketch_directory\>/config.h to set the desired number of threads to be used.
+Modify the value after #define THREAD_NUM in \<sketch_directory\>/config.h to set the desired number of threads.
 
 Use the following commands to compile and run the code:
 ```bash
@@ -42,7 +42,7 @@ make
 ./<sketch_executable_file> <path_to_dataset>
 ```
 
-## 3 Other Notes
+## 3 Other notes
 
 ### 3.1  Adjusting compiler flags for compatibility
 The -mavx2 compiler flag is included in the CMakeLists.txt files of all sketch directories to enable automatic vectorization for performance optimization.
