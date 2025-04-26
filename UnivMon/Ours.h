@@ -86,6 +86,12 @@ struct alignas(64) QueryOutcome
     {
       for (int j = 0; j < MAX_LEVEL; j++)
       {
+        if (ARRAY_SIZE < BUCKET_LENGTH * COUNTER_PER_BUCKET)
+        {
+          std::cerr << "ARRAY_SIZE is too small, adjust it in config.h" << std::endl;
+          std::exit(EXIT_FAILURE);
+        }
+
         outcome[i][j] = static_cast<T *>(
             aligned_alloc(64, sizeof(T) * ARRAY_SIZE));
         if (!outcome[i][j])
@@ -157,7 +163,6 @@ private:
       vec.push_back(start[i]);
     }
   }
-
 
   HashMap GetHHCandidates()
   {
@@ -264,7 +269,6 @@ private:
     }
     std::cout << "Insert " << tot_keys << " keys." << std::endl;
   }
-
 
   void ChildThread(std::thread *thisThd, uint32_t thread_id, void *start,
                    uint64_t size, std::atomic<int32_t> *finish)
@@ -557,7 +561,7 @@ private:
                                   .load() *
                               incre;
           }
-          int64_t minimum = MedianK<int32_t,HASH_NUM>(count);
+          int64_t minimum = MedianK<int32_t, HASH_NUM>(count);
           if (minimum <= 0)
           {
             continue;
@@ -646,6 +650,5 @@ private:
     this->query_flag[thread_id].value.fetch_xor(0x01000000);
   }
 #endif
-
 };
 #endif

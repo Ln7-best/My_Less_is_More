@@ -82,7 +82,11 @@ struct alignas(64) QueryOutcome
   {
     for (int i = 0; i < NUM_OUTCOME; i++)
     {
-
+      if (ARRAY_SIZE < BUCKET_LENGTH * COUNTER_PER_BUCKET)
+      {
+        std::cerr << "ARRAY_SIZE is too small, adjust it in config.h" << std::endl;
+        std::exit(EXIT_FAILURE);
+      }
       outcome[i] = static_cast<T *>(
           aligned_alloc(64, sizeof(T) * ARRAY_SIZE));
       if (!outcome[i])
@@ -345,7 +349,7 @@ private:
 #endif
 
   void insert(const std::vector<Key> &dataset, MyChild_Count<Key> *sketch,
-               myQueue queue_group[][thread_num], uint32_t thread_id)
+              myQueue queue_group[][thread_num], uint32_t thread_id)
   {
     uint32_t length = dataset.size();
     for (uint32_t i = 0; i < length; ++i)
@@ -523,7 +527,7 @@ private:
                                   .load() *
                               incre;
           }
-          int64_t minimum = MedianK<int32_t,HASH_NUM>(count);
+          int64_t minimum = MedianK<int32_t, HASH_NUM>(count);
           if (minimum <= 0)
           {
             continue;

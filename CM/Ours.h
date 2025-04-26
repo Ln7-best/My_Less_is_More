@@ -82,7 +82,11 @@ struct alignas(64) QueryOutcome
   {
     for (int i = 0; i < NUM_OUTCOME; i++)
     {
-
+      if (ARRAY_SIZE < BUCKET_LENGTH * COUNTER_PER_BUCKET)
+      {
+        std::cerr << "ARRAY_SIZE is too small, adjust it in config.h" << std::endl;
+        std::exit(EXIT_FAILURE);
+      }
       outcome[i] = static_cast<T *>(
           aligned_alloc(64, sizeof(T) * ARRAY_SIZE));
       if (!outcome[i])
@@ -177,7 +181,7 @@ private:
   }
   /**
    * @brief function of the parent thread, used to initialize the variables and start the worker threads
-   * @param thisThd pointer to the parent thread 
+   * @param thisThd pointer to the parent thread
    * @param start pointer to the beginning of the dataset
    * @param size size of the dataset in bytes
    */
@@ -261,8 +265,8 @@ private:
   }
   /**
    * @brief function of the worker thread, used to insert the elements in dataset into the sketch
-   * @param thisThd pointer to the worker thread 
-   * @param thread_id id of the thread 
+   * @param thisThd pointer to the worker thread
+   * @param thread_id id of the thread
    * @param start pointer to the beginning of the dataset
    * @param size size of the dataset in bytes
    * @param finish counter to record the number of finished worker
@@ -385,7 +389,7 @@ private:
     }
     process_counter[thread_id].value.store(length);
   }
-    /**
+  /**
    * @brief insert the key into local sketch
    * @param p local sketch
    * @param q_group parallel ringbuffer group for communication between local structures and global partitions
@@ -444,7 +448,8 @@ private:
           // if the batched counter is large enough, push it into the global sketch via the ringbuffer
           while (__builtin_expect(!q_group[push_sec_id][thread_id].enqueue_fast(
                                       CM_Entry<Key>(key, hashPos, sec_inner_index,
-                                                    9 * COUNTERMAX)),0))
+                                                    9 * COUNTERMAX)),
+                                  0))
           {
             ProcessQueue(q_group, sketch_sub_section, thread_id);
           }
@@ -495,7 +500,8 @@ private:
     uint16_t sec_inner_index = insert_pos % sub_sketch_length;
     // push the evicted element into the global sketc
     while (__builtin_expect(!q_group[push_sec_id][thread_id].enqueue_fast(CM_Entry<Key>(
-                                insert_key, hashPos, sec_inner_index, insert_value * COUNTERMAX)),0))
+                                insert_key, hashPos, sec_inner_index, insert_value * COUNTERMAX)),
+                            0))
     {
       ProcessQueue(q_group, sketch_sub_section, thread_id);
     }
@@ -526,7 +532,7 @@ private:
             temp.value);
         uint64_t counter_val =
             sketch_sub_section[thread_id].counter[counter_pos].load();
-        
+
         // if the counter value is large enough, try to push the key into HH keeper
         if ((double)counter_val >
             this->global_cnt[thread_id].value * (ALPHA / 2))

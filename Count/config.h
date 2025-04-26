@@ -20,5 +20,5 @@ using MyChild_Count = Child_Count<Key, HASH_NUM, LENGTH>;
 #define ALPHA 0.0002 // Threshold for finding heavy hitters
 #define COUNTERMAX 0x7f
 #define NUM_OUTCOME 100000
-#define ARRAY_SIZE 128
+#define ARRAY_SIZE 128 // Must be a multiple of 64
 #endif

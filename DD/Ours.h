@@ -65,6 +65,12 @@ struct alignas(64) QueryOutcome
     for (int i = 0; i < NUM_OUTCOME; i++)
     {
 
+      if (ARRAY_SIZE < sub_sketch_length)
+      {
+        std::cerr << "ARRAY_SIZE is too small, adjust it in config.h" << std::endl;
+        std::exit(EXIT_FAILURE);
+      }
+      
       outcome[i] = static_cast<T *>(
           aligned_alloc(64, sizeof(T) * ARRAY_SIZE));
       if (!outcome[i])

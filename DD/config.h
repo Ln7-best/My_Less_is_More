@@ -12,7 +12,7 @@ constexpr size_t ceil_div(size_t dividend, size_t divisor) {
 }
 const size_t sub_sketch_length = ceil_div(LENGTH, THREAD_NUM);
 #define NUM_OUTCOME 100000
-#define ARRAY_SIZE 1152
+#define ARRAY_SIZE 1152 // Must be a multiple of 64
 template<typename Key>
 using MyChild_DD = Child_DD<Key, LENGTH>;
 
