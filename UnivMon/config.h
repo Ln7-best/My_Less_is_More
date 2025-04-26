@@ -29,6 +29,5 @@ using MyChild_Univ = Child_UnivMon<Key, MAX_LEVEL, HASH_NUM, LENGTH>;
 #define NUM_OUTCOME 100000
 
 #define ARRAY_SIZE 128 // Must be a multiple of 64
-//#define QUEUELENGTH
 
 #endif
