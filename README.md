@@ -42,16 +42,3 @@ make
 ./<sketch_executable_file> <path_to_dataset>
 ```
 
-## 3 Other notes
-
-### 3.1  Adjusting compiler flags for compatibility
-The -mavx2 compiler flag is included in the CMakeLists.txt files of all sketch directories to enable automatic vectorization for performance optimization.
-On machines lacking AVX2 support, this flag can be removed by modifying the line
-```bash
-set(CMAKE_CXX_FLAGS "-O3 -faligned-new -pthread -mavx2")
-```
-to
-```bash
-set(CMAKE_CXX_FLAGS "-O3 -faligned-new -pthread")
-```
-in the CMakeLists.txt files. 
