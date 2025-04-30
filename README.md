@@ -1,6 +1,7 @@
 # Less-is-More
 ## 1 Introduction
 This repository provides the implementation of StreamSketch, the first truly scalable parallel sketch framework built on streaming principles:
+
 ![exp_pic](./readme_pic/CAIDA_0.99_throughput_comparison.png)
 
 We applied the framework to five different sketches. The mapping between the code directories and the corresponding sketches is as follows:
