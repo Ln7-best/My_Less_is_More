@@ -10,7 +10,7 @@ template <typename Key> struct CM_Entry {
   Key key;
   uint16_t hashPos;
   uint16_t pos;
-  uint64_t value;
+  uint16_t value;
 
   CM_Entry(Key _key = 0, uint64_t _hashPos = 0, uint64_t _pos = 0,
            uint64_t _value = 0)

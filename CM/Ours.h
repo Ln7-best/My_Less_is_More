@@ -17,6 +17,12 @@
 #include <unordered_set>
 #include <unordered_map>
 // #define ONLINEQUERY
+const uint16_t multi [3][3] = {{127,8,8},{8,127,8},{8,8,127}}; 
+const uint16_t bitsmask[3] = {
+    (uint16_t)~((uint16_t)(1 << 5) - 1),               
+    (uint16_t)~((uint16_t)((1 << 5) - 1) << 5),        
+   (uint16_t)~((uint16_t)((1 << 5) - 1) << 10)      
+};
 const uint64_t PROCESSGAP = 100000;
 const uint64_t COUTERGAP = PROCESSGAP / 100;
 struct alignas(64) GlobalSketchSubSection
@@ -38,7 +44,7 @@ struct Stash_Bucket
 {
   uint64_t vote;
   Key ID[COUNTER_PER_BUCKET_FILTER];
-  uint64_t count[COUNTER_PER_BUCKET_FILTER];
+  uint16_t count[COUNTER_PER_BUCKET_FILTER];
   uint16_t pos[COUNTER_PER_BUCKET_FILTER];
   // uint64_t pad[4];
 };
@@ -54,7 +60,7 @@ template <typename Key>
 struct alignas(64) ChildBucketsSubSection
 {
   Stash_Bucket<Key> buckets[HASH_NUM][FILTER_BUCKET_LENGTH];
-  char padding[64 - sizeof(buckets) % 64];
+  // char padding[64 - sizeof(buckets) % 64];
 };
 
 #ifdef ONLINEQUERY
@@ -499,7 +505,6 @@ private:
     uint64_t local_min;
     auto sketch = p->sketch;
     uint32_t pos[HASH_NUM];
-    uint16_t sketch_val[4] = {0};
     for (uint32_t hashPos = 0; hashPos < HASH_NUM; ++hashPos)
     {
       pos[hashPos] = hash(key, hashPos) % LENGTH;
@@ -512,22 +517,24 @@ private:
       sketch[map_pos] += 1;
       if (__builtin_expect(sketch[map_pos] >= COUNTERMAX, 0))
       {
-        uint16_t sketch_val[4] = {0};
+        uint16_t sketch_val = 0;
+        
         for(uint16_t p = 0;p < HASH_NUM;p++)
         {    
           // if(sketch[pos[hashPos] * HASH_NUM + p] > 100)
           // {
-          sketch_val[p] = sketch[pos[hashPos] * HASH_NUM + p];
+          sketch_val |= ((uint16_t)(sketch[pos[hashPos] * HASH_NUM + p]>>3)<<(5*p));
           sketch[pos[hashPos] * HASH_NUM + p] = 0;
           // }
         }
+        sketch_val &= bitsmask[hashPos];
+        sketch_val |= (1<<(5*hashPos));
         // sketch_val[hashPos] = sketch[map_pos];
         // sketch[map_pos] = 0;
-        sketch_val[3] = 1;
-        uint64_t my_sketch_value = *reinterpret_cast<uint64_t *>(sketch_val);
+        // sketch_val[3] = 1;
         // if the counter is larger than the predefined threshold
         // insert the counter into remote stash for batching
-        InsertStash(q_group, key, thread_id, sketch_sub_section, hashPos, pos[hashPos], my_sketch_value);
+        InsertStash(q_group, key, thread_id, sketch_sub_section, hashPos, pos[hashPos], sketch_val);
       }
     }
   }
@@ -542,6 +549,7 @@ private:
     uint32_t minPos = 0;
     // ensure the update events from the same counter will be mapped into the same bucket
     uint64_t idx = pos % FILTER_BUCKET_LENGTH;
+    uint64_t bucket_counter = (this->stash[thread_id].buckets[hashPos][idx].count[0] >> (5*hashPos)) & 0x1f;
     for (uint32_t j = 0; j < COUNTER_PER_BUCKET_FILTER; j++)
     {
       if (this->stash[thread_id].buckets[hashPos][idx].ID[j] ==
@@ -550,7 +558,8 @@ private:
         this->stash[thread_id].buckets[hashPos][idx].count[j] += sketch_value;
         this->stash[thread_id].buckets[hashPos][idx].pos[j] = pos;
         // if (this->stash[thread_id].buckets[hashPos][idx].count[j] == 9)
-        if ((this->stash[thread_id].buckets[hashPos][idx].count[j] >> 48) == 9)
+        // if (__builtin_expect(bucket_counter == 9,0))
+        if (bucket_counter == 9,0)
         {
           // operation_cnt[thread_id].value++;
           uint64_t push_sec_id = pos / sub_sketch_length;
@@ -573,7 +582,7 @@ private:
       //     minVal)
       // {
       minPos = j;
-      minVal = (this->stash[thread_id].buckets[hashPos][idx].count[j] >> 48);
+      // minVal = (this->stash[thread_id].buckets[hashPos][idx].count[j] >> 48);
       // }
     }
     if (update_flag)
@@ -587,7 +596,7 @@ private:
 
     // if the incoming element locates in the same counter as the stored element, the stored element needs to be replaced
     // this guarantees sequential consistency of updates within a single counter.
-    if ((this->stash[thread_id].buckets[hashPos][idx].vote + 1) >= minVal * 8 || insert_pos == this->stash[thread_id].buckets[hashPos][idx].pos[minPos])
+    if ((this->stash[thread_id].buckets[hashPos][idx].vote + 1) >= bucket_counter * 8 || insert_pos == this->stash[thread_id].buckets[hashPos][idx].pos[minPos])
     // if ((this->stash[thread_id].buckets[hashPos][idx].vote + 1) >= minVal * 8)
     {
       insert_value = this->stash[thread_id].buckets[hashPos][idx].count[minPos];
@@ -644,8 +653,8 @@ private:
         for(uint64_t p=0;p<HASH_NUM;p++)
         {
           // src_val >>= (16 * hash_pos);
-          uint64_t add = src_val & 0xffff;
-          src_val >>= 16;
+          uint64_t add = (src_val & 0x1f) * multi[hash_pos][p];
+          src_val >>= 5;
           uint64_t counter_pos = base_counter_pos + p;
           // uint64_t counter_pos = base_counter_pos + hash_pos;
 
