@@ -40,6 +40,7 @@ struct Stash_Bucket
   Key ID[COUNTER_PER_BUCKET_FILTER];
   uint64_t count[COUNTER_PER_BUCKET_FILTER];
   uint16_t pos[COUNTER_PER_BUCKET_FILTER];
+  // uint64_t pad[4];
 };
 
 template <typename Key>
@@ -342,7 +343,7 @@ private:
               // << std::fixed << std::setprecision(2)
               << min_throughput << std::endl;
     HashMap ret = GetHHCandidates();
-    // HHCompare(ret,(*mp), size / sizeof(Key) * ALPHA);
+    HHCompare(ret,(*mp), size / sizeof(Key) * ALPHA);
     std::cout << sizeof(stash[0].buckets[0][0])<<" "<<alignof(uint16_t)<<std::endl;
     std::cout << &stash[0].buckets[0][0].vote<<" "<<&stash[0].buckets[0][0].ID[0]<<" "<<&stash[0].buckets[0][0].count[0]<<" "<<&stash[0].buckets[0][0].pos[0]<<" "<<&stash[0].buckets[0][1].vote<<std::endl;
     uint64_t sum =0;
@@ -512,11 +513,13 @@ private:
       if (__builtin_expect(sketch[map_pos] >= COUNTERMAX, 0))
       {
         uint16_t sketch_val[4] = {0};
-        // sketch[hashPos][pos[hashPos]] = 0;
         for(uint16_t p = 0;p < HASH_NUM;p++)
         {    
+          // if(sketch[pos[hashPos] * HASH_NUM + p] > 100)
+          // {
           sketch_val[p] = sketch[pos[hashPos] * HASH_NUM + p];
           sketch[pos[hashPos] * HASH_NUM + p] = 0;
+          // }
         }
         // sketch_val[hashPos] = sketch[map_pos];
         // sketch[map_pos] = 0;
@@ -549,7 +552,7 @@ private:
         // if (this->stash[thread_id].buckets[hashPos][idx].count[j] == 9)
         if ((this->stash[thread_id].buckets[hashPos][idx].count[j] >> 48) == 9)
         {
-          operation_cnt[thread_id].value++;
+          // operation_cnt[thread_id].value++;
           uint64_t push_sec_id = pos / sub_sketch_length;
           uint16_t sec_inner_index = pos % sub_sketch_length;
           // if the batched counter is large enough, push it into the global sketch via the ringbuffer
@@ -585,6 +588,7 @@ private:
     // if the incoming element locates in the same counter as the stored element, the stored element needs to be replaced
     // this guarantees sequential consistency of updates within a single counter.
     if ((this->stash[thread_id].buckets[hashPos][idx].vote + 1) >= minVal * 8 || insert_pos == this->stash[thread_id].buckets[hashPos][idx].pos[minPos])
+    // if ((this->stash[thread_id].buckets[hashPos][idx].vote + 1) >= minVal * 8)
     {
       insert_value = this->stash[thread_id].buckets[hashPos][idx].count[minPos];
       insert_key = this->stash[thread_id].buckets[hashPos][idx].ID[minPos];
@@ -639,9 +643,12 @@ private:
 
         for(uint64_t p=0;p<HASH_NUM;p++)
         {
+          // src_val >>= (16 * hash_pos);
           uint64_t add = src_val & 0xffff;
           src_val >>= 16;
           uint64_t counter_pos = base_counter_pos + p;
+          // uint64_t counter_pos = base_counter_pos + hash_pos;
+
           if (add == 0)
             continue;
                // uint64_t counter_pos = hash_pos * sub_sketch_length + pos;
@@ -718,7 +725,9 @@ private:
           }
           cnt++;
         }
-       }
+ 
+        } // for
+
       }
     }
     this->round[thread_id].value++;
