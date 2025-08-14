@@ -345,7 +345,10 @@ private:
     // HHCompare(ret,(*mp), size / sizeof(Key) * ALPHA);
     std::cout << sizeof(stash[0].buckets[0][0])<<" "<<alignof(uint16_t)<<std::endl;
     std::cout << &stash[0].buckets[0][0].vote<<" "<<&stash[0].buckets[0][0].ID[0]<<" "<<&stash[0].buckets[0][0].count[0]<<" "<<&stash[0].buckets[0][0].pos[0]<<" "<<&stash[0].buckets[0][1].vote<<std::endl;
-
+    uint64_t sum =0;
+    for(uint64_t i=0;i<THREAD_NUM;i++)
+      sum += operation_cnt[i].value;
+    std::cout<<sum<<std::endl; 
     // std::cout << "Insert " << tot_keys << " keys." << std::endl;
   }
   /**
@@ -356,7 +359,7 @@ private:
    * @param size size of the dataset in bytes
    * @param finish counter to record the number of finished worker
    */
-  void ChildThread(std::thread *thisThd, uint32_t thread_id, void *start,
+  void ChildThread(std::thread *thisThd, uint32_t thread_id, void *start, 
                    uint64_t size, std::atomic<int32_t> *finish)
   {
 #ifdef __linux__
@@ -511,7 +514,7 @@ private:
         uint16_t sketch_val[4] = {0};
         // sketch[hashPos][pos[hashPos]] = 0;
         for(uint16_t p = 0;p < HASH_NUM;p++)
-        {
+        {    
           sketch_val[p] = sketch[pos[hashPos] * HASH_NUM + p];
           sketch[pos[hashPos] * HASH_NUM + p] = 0;
         }
@@ -546,12 +549,13 @@ private:
         // if (this->stash[thread_id].buckets[hashPos][idx].count[j] == 9)
         if ((this->stash[thread_id].buckets[hashPos][idx].count[j] >> 48) == 9)
         {
+          operation_cnt[thread_id].value++;
           uint64_t push_sec_id = pos / sub_sketch_length;
           uint16_t sec_inner_index = pos % sub_sketch_length;
           // if the batched counter is large enough, push it into the global sketch via the ringbuffer
           while (__builtin_expect(!q_group[push_sec_id][thread_id].enqueue_fast(
                                       CM_Entry<Key>(key, hashPos, sec_inner_index,
-                                                    this->stash[thread_id].buckets[hashPos][idx].count[j] * COUNTERMAX)),
+                                                    this->stash[thread_id].buckets[hashPos][idx].count[j])),
                                   0))
           {
             ProcessQueue(q_group, sketch_sub_section, thread_id);
