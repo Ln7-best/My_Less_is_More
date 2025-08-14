@@ -38,7 +38,7 @@ struct Stash_Bucket
 {
   uint64_t vote;
   Key ID[COUNTER_PER_BUCKET_FILTER];
-  uint16_t count[COUNTER_PER_BUCKET_FILTER];
+  uint64_t count[COUNTER_PER_BUCKET_FILTER];
   uint16_t pos[COUNTER_PER_BUCKET_FILTER];
 };
 
@@ -495,21 +495,31 @@ private:
     uint64_t local_min;
     auto sketch = p->sketch;
     uint32_t pos[HASH_NUM];
+    uint16_t sketch_val[4] = {0};
     for (uint32_t hashPos = 0; hashPos < HASH_NUM; ++hashPos)
     {
       pos[hashPos] = hash(key, hashPos) % LENGTH;
     }
-
+    
     for (uint32_t hashPos = 0; hashPos < HASH_NUM; ++hashPos)
     {
       // update local sketch
-      sketch[hashPos][pos[hashPos]] += 1;
+      uint32_t map_pos = pos[hashPos] * HASH_NUM + hashPos;
+      sketch[map_pos] += 1;
       if (__builtin_expect(sketch[hashPos][pos[hashPos]] >= COUNTERMAX, 0))
       {
-        sketch[hashPos][pos[hashPos]] = 0;
+        uint16_t sketch_val[4] = {0};
+        // sketch[hashPos][pos[hashPos]] = 0;
+        for(uint16_t p = 0;p < HASH_NUM;p++)
+        {
+          sketch_val[p] = sketch[pos[hashPos] * HASH_NUM + p];
+          sketch[pos[hashPos] * HASH_NUM + p] = 0;
+        }
+        sketch_val[3] = 1;
+        uint64_t my_sketch_value = *reinterpret_cast<uint64_t *>(sketch_val);
         // if the counter is larger than the predefined threshold
         // insert the counter into remote stash for batching
-        InsertStash(q_group, key, thread_id, sketch_sub_section, hashPos, pos[hashPos]);
+        InsertStash(q_group, key, thread_id, sketch_sub_section, hashPos, pos[hashPos], my_sketch_value);
       }
     }
   }
@@ -517,7 +527,7 @@ private:
   inline void InsertStash(myQueue q_group[][thread_num],
                           const Key &key,
                           uint64_t thread_id,
-                          struct GlobalSketchSubSection *sketch_sub_section, uint16_t hashPos, uint16_t pos)
+                          struct GlobalSketchSubSection *sketch_sub_section, uint16_t hashPos, uint16_t pos,uint64_t sketch_value)
   {
     bool update_flag = false;
     uint64_t minVal = 0x7fffffff;
@@ -529,15 +539,16 @@ private:
       if (this->stash[thread_id].buckets[hashPos][idx].ID[j] ==
           key)
       {
-        this->stash[thread_id].buckets[hashPos][idx].count[j]++;
-        if (this->stash[thread_id].buckets[hashPos][idx].count[j] == 9)
+        this->stash[thread_id].buckets[hashPos][idx].count[j] += sketch_value;
+        // if (this->stash[thread_id].buckets[hashPos][idx].count[j] == 9)
+        if ((this->stash[thread_id].buckets[hashPos][idx].count[j] >> 48) == 9)
         {
           uint64_t push_sec_id = pos / sub_sketch_length;
           uint16_t sec_inner_index = pos % sub_sketch_length;
           // if the batched counter is large enough, push it into the global sketch via the ringbuffer
           while (__builtin_expect(!q_group[push_sec_id][thread_id].enqueue_fast(
                                       CM_Entry<Key>(key, hashPos, sec_inner_index,
-                                                    9 * COUNTERMAX)),
+                                                    this->stash[thread_id].buckets[hashPos][idx].count[j] * COUNTERMAX)),
                                   0))
           {
             ProcessQueue(q_group, sketch_sub_section, thread_id);
@@ -548,12 +559,12 @@ private:
         }
         update_flag = true;
       }
-      if (this->stash[thread_id].buckets[hashPos][idx].count[j] <
-          minVal)
-      {
-        minPos = j;
-        minVal = this->stash[thread_id].buckets[hashPos][idx].count[j];
-      }
+      // if (this->stash[thread_id].buckets[hashPos][idx].count[j] <
+      //     minVal)
+      // {
+      minPos = j;
+      minVal = this->stash[thread_id].buckets[hashPos][idx].count[j];
+      // }
     }
     if (update_flag)
       return;
