@@ -38,7 +38,7 @@ struct Stash_Bucket
 {
   uint64_t vote;
   Key ID[COUNTER_PER_BUCKET_FILTER];
-  uint64_t count[COUNTER_PER_BUCKET_FILTER];
+  uint16_t count[COUNTER_PER_BUCKET_FILTER];
   uint16_t pos[COUNTER_PER_BUCKET_FILTER];
 };
 
@@ -122,11 +122,11 @@ template <typename Key, uint32_t thread_num>
 class Ours
 {
 public:
-  void Update(void *start, uint64_t size)
+  void Update(void *start, uint64_t size, std::unordered_map<Key, int32_t> mp)
   {
     size = size;
     std::thread parent;
-    parent = std::thread(&Ours::ParentThread, this, &parent, start, size);
+    parent = std::thread(&Ours::ParentThread, this, &parent, start, size, &mp);
     parent.join();
   }
 
@@ -141,6 +141,7 @@ private:
   typedef std::pair<Key, uint64_t> KV_Pair;
   QueryOutcome<KV_Pair> threads_outcome[thread_num];
 #endif
+  double running_time[thread_num];
   typedef std::unordered_map<Key, int32_t> HashMap;
   GlobalSketchSubSection global_sketch[thread_num];
   uint32_t dataset_size[thread_num];
@@ -162,6 +163,61 @@ private:
       vec.push_back(start[i]);
     }
   }
+
+  static void HHCompare(HashMap test, HashMap real, int32_t threshold, std::ofstream *outputFile = nullptr)
+  {
+    double estHH = 0, HH = 0, both = 0;
+    double CR = 0, PR = 0, AAE = 0, ARE = 0;
+    std::cout << "real size" << real.size() << std::endl;
+    std::cout << "test size" << test.size() << std::endl;
+    uint64_t cnt = 0;
+    for (auto it = test.begin(); it != test.end(); ++it)
+    {
+      if (it->second > threshold)
+      {
+        estHH += 1;
+        if (real[it->first] > threshold)
+        {
+          both += 1;
+          AAE += abs(real[it->first] - it->second);
+          ARE += abs(real[it->first] - it->second) / (double)real[it->first];
+        }
+      }
+      else if ((int64_t)threshold - (int64_t)it->second < 10000)
+      {
+        cnt++;
+      }
+    }
+    uint64_t test_hit = 0;
+    for (auto it = real.begin(); it != real.end(); ++it)
+    {
+      if (it->second > threshold)
+      {
+        HH += 1;
+        if (test.find(it->first) != test.end())
+        {
+          std::cout << (int64_t)threshold - (int64_t)test[it->first] << std::endl;
+          test_hit++;
+        }
+      }
+    }
+    if (!outputFile)
+      std::cout << "real HH:" << HH << std::endl
+                << "correct HH: " << both << std::endl
+                << "test hit: " << test_hit << std::endl
+                << "num: " << cnt << std::endl
+                << "CR: " << both / HH << std::endl
+                << "PR: " << both / estHH << std::endl
+                << "AAE: " << AAE / both << std::endl
+                << "ARE: " << ARE / both << std::endl
+                << std::endl;
+    else
+      *outputFile << "CR: " << std::to_string(both / HH) << std::endl
+                  << "PR: " << std::to_string(both / estHH) << std::endl
+                  << "AAE: " << std::to_string(AAE / both) << std::endl
+                  << "ARE: " << std::to_string(ARE / both) << std::endl;
+  }
+
   HashMap GetHHCandidates()
   {
     HashMap ret;
@@ -185,7 +241,7 @@ private:
    * @param start pointer to the beginning of the dataset
    * @param size size of the dataset in bytes
    */
-  void ParentThread(std::thread *thisThd, void *start, uint64_t size)
+  void ParentThread(std::thread *thisThd, void *start, uint64_t size, std::unordered_map<Key, int32_t> *mp)
   {
 #ifdef __linux__
     if (!setaffinity(thisThd, thread_num))
@@ -261,7 +317,36 @@ private:
       thd[i].join();
       tot_keys += dataset_size[i];
     }
-    std::cout << "Insert " << tot_keys << " keys." << std::endl;
+    double avg_time = 0;
+    double max_time = 0;
+    double avg_numa1 = 0;
+    uint64_t tot_size = 0;
+    double avg_numa2 = 0;
+    for (uint32_t i = 0; i < thread_num; i++)
+    {
+      avg_time += running_time[i];
+      max_time = std::max(max_time, running_time[i]);
+      tot_size += dataset_size[i];
+      std::cout << "thread id: " << i << " dataset size: " << dataset_size[i]
+                << " running time: " << running_time[i] << std::endl;
+    }
+    avg_time /= thread_num;
+
+    double min_throughput = tot_size / max_time * 1000;
+    double avg_throughput = tot_size / avg_time * 1000;
+    std::cout << "tot_process" << tot_size << std::endl;
+    std::cout << "avg: " << avg_time << std::endl;
+    std::cout << "max: " << max_time << std::endl;
+    std::cout << "avg throughput: " << avg_throughput << std::endl;
+    std::cout << "throughput: "
+              // << std::fixed << std::setprecision(2)
+              << min_throughput << std::endl;
+    HashMap ret = GetHHCandidates();
+    // HHCompare(ret,(*mp), size / sizeof(Key) * ALPHA);
+    std::cout << sizeof(stash[0].buckets[0][0])<<" "<<alignof(uint16_t)<<std::endl;
+    std::cout << &stash[0].buckets[0][0].vote<<" "<<&stash[0].buckets[0][0].ID[0]<<" "<<&stash[0].buckets[0][0].count[0]<<" "<<&stash[0].buckets[0][0].pos[0]<<" "<<&stash[0].buckets[0][1].vote<<std::endl;
+
+    // std::cout << "Insert " << tot_keys << " keys." << std::endl;
   }
   /**
    * @brief function of the worker thread, used to insert the elements in dataset into the sketch
@@ -286,7 +371,11 @@ private:
     while (partition_num < thread_num)
     {
     }
+    auto start_time = std::chrono::high_resolution_clock::now();
     Insert(dataset, sketch, que, thread_id);
+    auto end_time = std::chrono::high_resolution_clock::now();
+    std::chrono::duration<double, std::milli> duration = end_time - start_time;
+    running_time[thread_id] = duration.count();
     dataset_size[thread_id] = dataset.size();
     (*finish).fetch_add(1, std::memory_order_seq_cst);
     while ((*finish).load(std::memory_order_seq_cst) < thread_num)
