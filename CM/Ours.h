@@ -506,7 +506,7 @@ private:
       // update local sketch
       uint32_t map_pos = pos[hashPos] * HASH_NUM + hashPos;
       sketch[map_pos] += 1;
-      if (__builtin_expect(sketch[hashPos][pos[hashPos]] >= COUNTERMAX, 0))
+      if (__builtin_expect(sketch[map_pos] >= COUNTERMAX, 0))
       {
         uint16_t sketch_val[4] = {0};
         // sketch[hashPos][pos[hashPos]] = 0;
@@ -515,6 +515,8 @@ private:
           sketch_val[p] = sketch[pos[hashPos] * HASH_NUM + p];
           sketch[pos[hashPos] * HASH_NUM + p] = 0;
         }
+        // sketch_val[hashPos] = sketch[map_pos];
+        // sketch[map_pos] = 0;
         sketch_val[3] = 1;
         uint64_t my_sketch_value = *reinterpret_cast<uint64_t *>(sketch_val);
         // if the counter is larger than the predefined threshold
@@ -540,6 +542,7 @@ private:
           key)
       {
         this->stash[thread_id].buckets[hashPos][idx].count[j] += sketch_value;
+        this->stash[thread_id].buckets[hashPos][idx].pos[j] = pos;
         // if (this->stash[thread_id].buckets[hashPos][idx].count[j] == 9)
         if ((this->stash[thread_id].buckets[hashPos][idx].count[j] >> 48) == 9)
         {
@@ -563,12 +566,12 @@ private:
       //     minVal)
       // {
       minPos = j;
-      minVal = this->stash[thread_id].buckets[hashPos][idx].count[j];
+      minVal = (this->stash[thread_id].buckets[hashPos][idx].count[j] >> 48);
       // }
     }
     if (update_flag)
       return;
-    uint64_t insert_value = 1;
+    uint64_t insert_value = sketch_value;
     uint64_t insert_pos = pos;
     uint64_t insert_key = key;
     // use vote strategy to simulate the TTL of each bucket
@@ -579,14 +582,14 @@ private:
     // this guarantees sequential consistency of updates within a single counter.
     if ((this->stash[thread_id].buckets[hashPos][idx].vote + 1) >= minVal * 8 || insert_pos == this->stash[thread_id].buckets[hashPos][idx].pos[minPos])
     {
-      insert_value = minVal;
+      insert_value = this->stash[thread_id].buckets[hashPos][idx].count[minPos];
       insert_key = this->stash[thread_id].buckets[hashPos][idx].ID[minPos];
       insert_pos = this->stash[thread_id].buckets[hashPos][idx].pos[minPos];
       this->stash[thread_id].buckets[hashPos][idx].vote = 0;
       this->stash[thread_id].buckets[hashPos][idx].ID[minPos] =
           key;
       this->stash[thread_id].buckets[hashPos][idx].count[minPos] =
-          1;
+          sketch_value;
       this->stash[thread_id].buckets[hashPos][idx].pos[minPos] =
           pos;
     }
@@ -600,7 +603,7 @@ private:
     uint16_t sec_inner_index = insert_pos % sub_sketch_length;
     // push the evicted element into the global sketc
     while (__builtin_expect(!q_group[push_sec_id][thread_id].enqueue_fast(CM_Entry<Key>(
-                                insert_key, hashPos, sec_inner_index, insert_value * COUNTERMAX)),
+                                insert_key, hashPos, sec_inner_index, insert_value)),
                             0))
     {
       ProcessQueue(q_group, sketch_sub_section, thread_id);
@@ -627,9 +630,19 @@ private:
         // merge the update into the global partition
         const uint16_t &hash_pos = temp.hashPos;
         const uint16_t &pos = temp.pos;
-        uint64_t counter_pos = hash_pos * sub_sketch_length + pos;
+        uint64_t base_counter_pos = pos * HASH_NUM;
+        uint64_t src_val = temp.value;
+
+        for(uint64_t p=0;p<HASH_NUM;p++)
+        {
+          uint64_t add = src_val & 0xffff;
+          src_val >>= 16;
+          uint64_t counter_pos = base_counter_pos + p;
+          if (add == 0)
+            continue;
+               // uint64_t counter_pos = hash_pos * sub_sketch_length + pos;
         sketch_sub_section[thread_id].counter[counter_pos].fetch_add(
-            temp.value);
+            add);
         uint64_t counter_val =
             sketch_sub_section[thread_id].counter[counter_pos].load();
 
@@ -658,7 +671,7 @@ private:
             minimum =
                 MIN(minimum,
                     sketch_sub_section[push_sec_id]
-                        .counter[tempHash * sub_sketch_length + sec_inner_index]
+                        .counter[HASH_NUM * sec_inner_index + tempHash]
                         .load());
           }
 
@@ -701,6 +714,7 @@ private:
           }
           cnt++;
         }
+       }
       }
     }
     this->round[thread_id].value++;
