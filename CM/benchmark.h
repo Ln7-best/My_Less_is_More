@@ -18,9 +18,9 @@ public:
     result = Load(PATH);
     uint64_t length = result.length / sizeof(Key);
     Key *dataset = (Key *)result.start;
-    // for (uint64_t i = 0; i < length; ++i) {
-    //   mp[dataset[i]] += 1;
-    // }
+    for (uint64_t i = 0; i < length; ++i) {
+      mp[dataset[i]] += 1;
+    }
   }
 
   ~Benchmark() { UnLoad(result); }

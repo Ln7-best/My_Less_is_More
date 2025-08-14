@@ -342,7 +342,7 @@ private:
               // << std::fixed << std::setprecision(2)
               << min_throughput << std::endl;
     HashMap ret = GetHHCandidates();
-    // HHCompare(ret,(*mp), size / sizeof(Key) * ALPHA);
+    HHCompare(ret,(*mp), size / sizeof(Key) * ALPHA);
     std::cout << sizeof(stash[0].buckets[0][0])<<" "<<alignof(uint16_t)<<std::endl;
     std::cout << &stash[0].buckets[0][0].vote<<" "<<&stash[0].buckets[0][0].ID[0]<<" "<<&stash[0].buckets[0][0].count[0]<<" "<<&stash[0].buckets[0][0].pos[0]<<" "<<&stash[0].buckets[0][1].vote<<std::endl;
 
