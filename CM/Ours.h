@@ -53,7 +53,7 @@ template <typename Key>
 struct alignas(64) ChildBucketsSubSection
 {
   Stash_Bucket<Key> buckets[HASH_NUM][FILTER_BUCKET_LENGTH];
-  char padding[64 - sizeof(buckets) % 64];
+  // char padding[64 - sizeof(buckets) % 64];
 };
 
 #ifdef ONLINEQUERY
