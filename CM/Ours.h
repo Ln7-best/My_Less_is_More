@@ -338,7 +338,7 @@ private:
     std::cout << "avg: " << avg_time << std::endl;
     std::cout << "max: " << max_time << std::endl;
     std::cout << "avg throughput: " << avg_throughput << std::endl;
-    std::cout << "throughput: "
+    std::cout << "min throughput: "
               // << std::fixed << std::setprecision(2)
               << min_throughput << std::endl;
     HashMap ret = GetHHCandidates();
