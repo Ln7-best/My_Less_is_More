@@ -597,7 +597,7 @@ private:
     // if the incoming element locates in the same counter as the stored element, the stored element needs to be replaced
     // this guarantees sequential consistency of updates within a single counter.
     if ((this->stash[thread_id].buckets[hashPos][idx].vote + 1) >= bucket_counter * 8 || insert_pos == this->stash[thread_id].buckets[hashPos][idx].pos[minPos])
-    // if ((this->stash[thread_id].buckets[hashPos][idx].vote + 1) >= minVal * 8)
+    // if (__builtin_expect((this->stash[thread_id].buckets[hashPos][idx].vote + 1) >= bucket_counter * 8,0))
     {
       insert_value = this->stash[thread_id].buckets[hashPos][idx].count[minPos];
       insert_key = this->stash[thread_id].buckets[hashPos][idx].ID[minPos];
