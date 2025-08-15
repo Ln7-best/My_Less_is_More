@@ -17,7 +17,7 @@
 #include <unordered_set>
 #include <unordered_map>
 // #define ONLINEQUERY
-const uint16_t multi [3][3] = {{127,8,8},{8,127,8},{8,8,127}}; 
+const uint16_t multi [3][3] = {{127,32,32},{32,127,32},{32,32,127}}; 
 const uint16_t bitsmask[3] = {
     (uint16_t)~((uint16_t)(1 << 5) - 1),               
     (uint16_t)~((uint16_t)((1 << 5) - 1) << 5),        
@@ -345,7 +345,7 @@ private:
     std::cout << "avg: " << avg_time << std::endl;
     std::cout << "max: " << max_time << std::endl;
     std::cout << "avg throughput: " << avg_throughput << std::endl;
-    std::cout << "throughput: "
+    std::cout << "min throughput: "
               // << std::fixed << std::setprecision(2)
               << min_throughput << std::endl;
     HashMap ret = GetHHCandidates();
@@ -523,8 +523,8 @@ private:
         {    
           // if(sketch[pos[hashPos] * HASH_NUM + p] > 100)
           // {
-          sketch_val |= ((uint16_t)(sketch[pos[hashPos] * HASH_NUM + p]>>3)<<(5*p));
-          sketch[pos[hashPos] * HASH_NUM + p] &= 0x7;
+          sketch_val |= ((uint16_t)(sketch[pos[hashPos] * HASH_NUM + p]>>5)<<(5*p));
+          sketch[pos[hashPos] * HASH_NUM + p] &= 31;
           // }
         }
         // sketch_val &= bitsmask[hashPos];
@@ -549,7 +549,6 @@ private:
     uint32_t minPos = 0;
     // ensure the update events from the same counter will be mapped into the same bucket
     uint64_t idx = pos % FILTER_BUCKET_LENGTH;
-    uint64_t bucket_counter = (this->stash[thread_id].buckets[hashPos][idx].count[0] >> (5*hashPos)) & 0x1f;
     for (uint32_t j = 0; j < COUNTER_PER_BUCKET_FILTER; j++)
     {
       if (this->stash[thread_id].buckets[hashPos][idx].ID[j] ==
@@ -558,6 +557,7 @@ private:
         this->stash[thread_id].buckets[hashPos][idx].count[j] += sketch_value;
         this->stash[thread_id].buckets[hashPos][idx].pos[j] = pos;
         // if (this->stash[thread_id].buckets[hashPos][idx].count[j] == 9)
+        uint64_t bucket_counter = (this->stash[thread_id].buckets[hashPos][idx].count[0] >> (5*hashPos)) & 0x1f;
         if (__builtin_expect(bucket_counter == 9,0))
         // if (bucket_counter == 9)
         {
@@ -587,6 +587,9 @@ private:
     }
     if (update_flag)
       return;
+    uint64_t bucket_counter = (this->stash[thread_id].buckets[hashPos][idx].count[minPos] >> (5*hashPos)) & 0x1f;
+    // if(bucket_counter>9)
+    //   std::cout<<"error"<<bucket_counter<<std::endl;
     uint64_t insert_value = sketch_value;
     uint64_t insert_pos = pos;
     uint64_t insert_key = key;
