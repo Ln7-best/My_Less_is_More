@@ -518,16 +518,16 @@ private:
       if (__builtin_expect(sketch[map_pos] >= COUNTERMAX, 0))
       {
         uint16_t sketch_val = 0;
-        
+        sketch[map_pos] = 0;
         for(uint16_t p = 0;p < HASH_NUM;p++)
         {    
           // if(sketch[pos[hashPos] * HASH_NUM + p] > 100)
           // {
           sketch_val |= ((uint16_t)(sketch[pos[hashPos] * HASH_NUM + p]>>3)<<(5*p));
-          sketch[pos[hashPos] * HASH_NUM + p] = 0;
+          sketch[pos[hashPos] * HASH_NUM + p] &= 0x7;
           // }
         }
-        sketch_val &= bitsmask[hashPos];
+        // sketch_val &= bitsmask[hashPos];
         sketch_val |= (1<<(5*hashPos));
         // sketch_val[hashPos] = sketch[map_pos];
         // sketch[map_pos] = 0;
@@ -558,8 +558,8 @@ private:
         this->stash[thread_id].buckets[hashPos][idx].count[j] += sketch_value;
         this->stash[thread_id].buckets[hashPos][idx].pos[j] = pos;
         // if (this->stash[thread_id].buckets[hashPos][idx].count[j] == 9)
-        // if (__builtin_expect(bucket_counter == 9,0))
-        if (bucket_counter == 9,0)
+        if (__builtin_expect(bucket_counter == 9,0))
+        // if (bucket_counter == 9)
         {
           // operation_cnt[thread_id].value++;
           uint64_t push_sec_id = pos / sub_sketch_length;
